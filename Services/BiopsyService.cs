@@ -1,39 +1,61 @@
-﻿using System.IO;
-using Microsoft.AspNetCore.Http;
-using OfficeOpenXml;
-using Microsoft.AspNetCore.Mvc;
-using dotnet_user.Services; // 確保引用了 DateService 所在的命名空間
-using Microsoft.Extensions.Configuration;
-using Microsoft.Data.SqlClient;
-using Dapper;
-using System.Threading.Tasks;
-using System.Linq;
-using System;
-using System.Globalization;
+﻿using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Dynamic;
+using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
+using Dapper; // Ensure Dapper is included
+
 namespace dotnet_user.Services
 {
     public class BiopsyService
     {
-        private readonly ILogger<BiopsyService> _logger;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<BiopsyService> _logger;
         private readonly DateService _dateService;
 
-        public BiopsyService(ILogger<BiopsyService> logger, IConfiguration configuration, DateService dateService)
+        public BiopsyService(IConfiguration configuration, ILogger<BiopsyService> logger, DateService dateService)
         {
-            _logger = logger;
             _configuration = configuration;
+            _logger = logger;
             _dateService = dateService;
         }
 
-        public async Task<List<dynamic>> GetBiopsyDataAsync(string str_date, string end_date)
+        public async Task<IEnumerable<dynamic>> GetBiopsyData(string str_date, string end_date)
         {
-            // 這裡加入日期處理邏輯
+            // Your existing logic to format and process dates goes here
+            str_date = str_date.Replace("-", "");
+            end_date = end_date.Replace("-", "");
+            // 處理 str_date
+            if (!string.IsNullOrEmpty(str_date) && DateTime.TryParseExact(str_date, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedStartDate))
+            {
+                str_date = parsedStartDate.AddDays(-1).ToString("yyyyMMdd");
+            }
+            else
+            {
+                str_date = _dateService.GetStartDate(30);
+            }
+
+            // 處理 end_date
+            if (!string.IsNullOrEmpty(end_date) && DateTime.TryParseExact(end_date, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedEndDate))
+            {
+                end_date = parsedEndDate.ToString("yyyyMMdd");
+            }
+            else
+            {
+                end_date = _dateService.GetCurrentDate();
+            }
+
+            // 將西元年份轉換為民國年份
+            str_date = (int.Parse(str_date.Substring(0, 4)) - 1911).ToString() + str_date.Substring(4, 4);
+            end_date = (int.Parse(end_date.Substring(0, 4)) - 1911).ToString() + end_date.Substring(4, 4);
+
+            _logger.LogInformation("{str_date} {end_date}", str_date, end_date);
 
             string connectionStringTgsql = _configuration.GetConnectionString("TgsqlConnection") ?? throw new InvalidOperationException("未在配置中找到 'TgsqlConnection' 連接字符串。");
-
             List<dynamic> combinedRecords;
+
             using (var connection = new SqlConnection(connectionStringTgsql))
             {
                 await connection.OpenAsync();
@@ -75,21 +97,18 @@ namespace dotnet_user.Services
                 combinedRecords = outpatientRecords.Concat(inpatientRecords).ToList();
             }
 
-            var result = new List<dynamic>();
-            foreach (var record in combinedRecords)
+            var result = combinedRecords.Select(record => new
             {
-                dynamic expando = new ExpandoObject();
-                expando.來源 = record.來源 == 0 ? "門診" : "住診";
-                expando.counter = record.counter.ToString();
-                expando.處置檔 = record.處置檔.ToString();
-                expando.開單日期 = record.開單日期.ToString();
-                expando.病歷號碼 = record.病歷號碼.ToString();
-                expando.姓名 = record.姓名.ToString();
-                expando.科別 = record.科別.ToString();
-                expando.醫師 = record.醫師.ToString();
+                來源 = record.來源 == 0 ? "門診" : "住診",
+                counter = record.counter.ToString(),
+                處置檔 = record.處置檔.ToString(),
+                開單日期 = record.開單日期.ToString(),
+                病歷號碼 = record.病歷號碼.ToString(),
+                姓名 = record.姓名.ToString(),
+                科別 = record.科別.ToString(),
+                醫師 = record.醫師.ToString()
+            }).ToList();
 
-                result.Add(expando);
-            }
 
             return result;
         }
