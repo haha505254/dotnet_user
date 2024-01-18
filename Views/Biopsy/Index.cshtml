@@ -1,0 +1,142 @@
+﻿@{
+    var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
+    var biopsyUrl = Url.Action("Biopsy", "切片報告管理");
+}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="fas fa-microscope"></i>
+        切片報告管理
+    </div>
+    <div class="card-body">
+        <div class="alert alert-primary" role="alert">
+            <div class="row">
+                <div class="col-4 input-group">
+                    <label for="str_datetime" class="d-none">選擇開始日期</label>
+                    <input type="text" id="str_datetime" class="form-control" placeholder="選擇開始日期"
+                           value="@ViewData["StrDate"]">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text str_calendar"><i class="far fa-calendar-alt"></i></span>
+                    </div>
+                </div>
+                <div class="col-4 input-group">
+                    <label for="end_datetime" class="d-none">選擇結束日期</label>
+                    <input type="text" id="end_datetime" class="form-control" placeholder="選擇結束日期"
+                           value="@ViewData["EndDate"]">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text end_calendar"><i class="far fa-calendar-alt"></i></span>
+                    </div>
+                </div>
+                <div class="col-2">
+                    <a id="detail" class="form-control btn-warning nav-link text-center" href="{{ url('切片報告管理/downloadDetail' . '?id=' . Request::input('id')) }}" target="_blank">
+                        <i class="fas fa-download"></i>
+                        <span>明細下載（.xls）</span>
+                    </a>
+                </div>
+                <div class="col-2">
+                    <a id="sql" class="form-control btn-info nav-link text-center" href="{{ url('切片報告管理/downloadSql' . '?id=' . Request::input('id')) }}" target="_blank">
+                        <i class="fas fa-download"></i>
+                        <span>語法下載（.xls）</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <table id="dataTable" class="table table-hover table-striped table-bordered text-center">
+            <thead>
+                <tr>
+                    <th>來源</th>
+                    <th>counter</th>
+                    <th>處置檔</th>
+                    <th>開單日期</th>
+                    <th>病歷號碼</th>
+                    <th>姓名</th>
+                    <th>科別</th>
+                    <th>醫師</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+        $(document).ready(function () {
+            new Cleave('#str_datetime', {
+                delimiter: '-',
+                blocks: [4, 2, 2]
+            });
+
+            new Cleave('#end_datetime', {
+                delimiter: '-',
+                blocks: [4, 2, 2]
+            });
+
+            $('#str_datetime, #end_datetime').datepicker({
+                todayHighlight: true,
+                autoclose: true,
+                format: 'yyyy-mm-dd',
+                language: "zh-TW",
+                dateFormat: 'yy-mm-dd',
+            });
+
+            $('.str_calendar').click(function () {
+                $('#str_datetime').datepicker('show');
+            });
+
+            $('.end_calendar').click(function () {
+                $('#end_datetime').datepicker('show');
+            });
+
+            ajaxDate();
+
+            $('#str_datetime, #end_datetime').on('change', function () {
+
+                // $('#detail').attr('href', '{{ url('切片報告管理 / downloadDetail ? id = ') }}' + $.urlParam('id') + '&str_date=' + $('#str_datetime').val() + '&end_date=' + $('#end_datetime').val());
+                // $('#sql').attr('href', '{{ url('切片報告管理 / downloadSql ? id = ') }}' + $.urlParam('id') + '&str_date=' + $('#str_datetime').val() + '&end_date=' + $('#end_datetime').val());
+                ajaxDate();
+            });
+        });
+
+
+        $.urlParam = function (name) {
+            let results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+            if (results == null) {
+                return null;
+            }
+            return decodeURI(results[1]) || 0;
+        };
+
+        function ajaxDate() {
+            $('#dataTable').DataTable({
+                'ajax': {
+                    'type': 'GET',
+                    'url': '@biopsyUrl',
+                    'dataType': 'json',
+                    'data': {
+                        'id': '@id',
+                        'str_date': $('#str_datetime').val(),
+                        'end_date': $('#end_datetime').val()
+                    },
+                    'dataSrc': function (data) {
+                        return data;
+                    }
+                },
+                'columns': [
+                    { 'data': '來源' },
+                    { 'data': 'counter' },
+                    { 'data': '處置檔' },
+                    { 'data': '開單日期' },
+                    { 'data': '病歷號碼' },
+                    { 'data': '姓名' },
+                    { 'data': '科別' },
+                    { 'data': '醫師' },
+                ],
+                'order': [[3, 'asc'], [0, 'asc']],
+                'destroy': true,
+                'pageLength': 25,
+                'fixedHeader': true
+            });
+        }
+    </script>
+
+}

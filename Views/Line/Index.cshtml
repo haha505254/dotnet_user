@@ -1,0 +1,122 @@
+﻿@using System.Linq
+@{
+    var counter = ViewData["Counter"] as string;
+    var email = ViewData["Email"] as string;
+    var userSettings = ViewData["UserSetting"] as IEnumerable<dynamic>;
+    var items = ViewData["Items"] as IEnumerable<dynamic>;
+}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="fas fa-qrcode"></i>
+        掃描條碼
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-6">
+                <div class="d-flex justify-content-center">
+                    <img src="https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=https://country.org.tw/%E9%80%9A%E7%9F%A5%E7%AE%A1%E7%90%86%E7%B3%BB%E7%B5%B1" alt="QR Code">
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="pt-4">
+                    第一次使用說明：
+                    <ol class="pl-4 pt-1 pb-2 m-0">
+                        <li class="pb-2"><span class="text-dark">透過手機掃描左方QR CODE。</span></li>
+                        <li class="pb-2"><span class="text-dark">輸入方鼎（country）的帳號與密碼。</span></li>
+                        <li class="pb-2"><span class="text-dark">選擇「透過1對1聊天接收LINE Notify的通知」並點選「同意並連動」。</span></li>
+                        <li class="pb-2"><span class="text-dark">選擇欲接收的通知，並點選「設定完成」即可。</span></li>
+                    </ol>
+                    <div class="alert alert-primary mt-2" role="alert">
+                        ※ 手機必須有網路、要有安裝Line。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+ @if (userSettings != null && userSettings.Any())
+{
+    var userSettingsList = userSettings.ToList();
+    <div class="card mb-3">
+        <div class="card-header">
+            <i class="fas fa-sliders-h"></i>
+            通知系統設定
+        </div>
+        <div class="card-body">
+            @if (ViewBag.Result != null)
+            {
+                <div class="alert alert-primary mt-2" role="alert">
+                    ※ 設定已更新成功。
+                </div>
+            }
+
+            <form asp-controller="Line" asp-action="UpdateUserSetting" method="post">
+                <table class="table table-striped table-bordered text-center">
+                    <thead>
+                        <tr>
+                            <th class="align-middle">項目</th>
+                            <th class="align-middle">說明</th>
+                            <th class="align-middle">接收Line通知</th>
+                            <th class="align-middle">信件通知</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (items != null)
+                        @foreach (var item in items)
+                        {
+                            <tr>
+                                <td>@item.Name</td>
+                                <td>@item.explanation</td>
+                                <td class="align-middle">
+                                    <div class="form-check">
+                                        <input type="hidden" name="@item.Counter" value="@(userSettingsList[item.Counter - 1].Line ? "1" : "0")">
+                                        <input class="form-check-input" type="checkbox" id="@item.Counter" name="@item.Counter"
+                                               onchange="updateHiddenInput(this)" value="1" @(userSettingsList[item.Counter - 1].Line ? "checked" : "")>
+                                    </div>
+                                </td>
+                                <td class="align-middle">
+                                    <div class="form-check">
+                                        <input type="hidden" name="@( "mail" + item.Counter)" value="@(userSettingsList[item.Counter - 1].Mail ? "1" : "0")">
+                                        <input class="form-check-input" type="checkbox" id="@( "mail" + item.Counter)"
+                                               name="@( "mail" + item.Counter)"
+                                               onchange="updateHiddenInput(this)" value="1" @(userSettingsList[item.Counter - 1].Mail ? "checked" : "")>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <div class="form-group">
+                    <label for="email">電子郵件地址</label>
+                    <input type="email" class="form-control" id="email" name="email" value="@email"
+                           aria-describedby="emailHelp"
+                           placeholder="請輸入電子郵件地址">
+                    <small id="emailHelp" class="form-text text-muted">若有勾選信件通知，請輸入或確認您的電子郵件地址。</small>
+                </div>
+                <input type="hidden" name="counter" value="@counter">
+                <input type="hidden" name="id" value="@Context.Request.Query["id"]">
+                <div class="row justify-content-center">
+                    <input type="submit" class="btn btn-primary mx-2" value="設定完成">
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+
+
+@section Scripts {
+
+    <script type="text/javascript">
+
+        function updateHiddenInput(checkbox) {
+            var hiddenInput = checkbox.previousElementSibling;
+            hiddenInput.value = checkbox.checked ? "1" : "0";
+        }
+
+    </script>
+}

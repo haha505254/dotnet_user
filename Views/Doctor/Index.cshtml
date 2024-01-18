@@ -1,0 +1,192 @@
+﻿
+@{
+    var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
+    var doctorUrl = Url.Action("Doctor", "醫師時段查詢");
+}
+
+
+
+<div class="alert alert-primary" role="alert">
+    <div class="row">
+        <div class="px-2">
+            <span class="align-middle">請選擇欲查詢的日期</span>
+        </div>
+        <div class="col-3 input-group">
+            <label for="str_datetime" class="d-none">請選擇欲查詢的日期</label>
+            <input type="text" id="str_datetime" class="form-control" placeholder="請選擇欲查詢的日期"
+                   value="@ViewData["StrDate"]">
+            <div class="input-group-prepend">
+                <span class="input-group-text str_calendar"><i class="far fa-calendar-alt"></i></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-info alert-dismissible fade show" style="display:inline-block;" role="alert">
+    <strong><i class="fas fa-bullhorn pr-2"></i></strong>2020-09-30 新增篩選功能，以利同仁操作順暢，請多加利用。
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+    </button>
+</div>
+
+
+
+<div class="row">
+    <div class="col-6">
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-stethoscope"></i>
+                醫師看診時段
+            </div>
+            <div class="card-body">
+                <table id="dataTable" class="table table-hover table-striped table-bordered text-center">
+                    <thead>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="fas fa-stethoscope"></i>
+                醫師停診時段
+            </div>
+            <div class="card-body">
+                <table id="dataTable_second" class="table table-hover table-striped table-bordered text-center">
+                    <thead>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+@section Scripts {
+    <script type="text/javascript">
+        $(document).ready(function () {
+            new Cleave('#str_datetime', {
+                delimiter: '-',
+                blocks: [4, 2, 2]
+            });
+
+            $('#str_datetime').datepicker({
+                todayHighlight: true,
+                autoclose: true,
+                format: 'yyyy-mm-dd',
+                language: "zh-TW"
+            });
+
+            ajaxDate();
+
+            $('.str_calendar').click(function () {
+                $('#str_datetime').datepicker('show');
+            });
+
+            $('#str_datetime').on('change', function () {
+                $('#dataTable, #dataTable_second').DataTable().clear().destroy();
+                $('#dataTable thead tr, #dataTable_second thead tr').remove();
+                ajaxDate();
+            });
+        });
+
+        function ajaxDate() {
+            $('#dataTable thead').append('<tr><th>科別</th><th>診別</th><th>班別</th><th>代號</th><th>姓名</th><th>備註</th></tr>');
+            $('#dataTable_second thead').append('<tr><th>科別</th><th>診別</th><th>班別</th><th>代號</th><th>姓名</th></tr>');
+
+            $('#dataTable').DataTable({
+                'ajax': {
+                    'type': 'GET',
+                    'url': '@doctorUrl',
+                    'dataType': 'json',
+                    'data': {
+                        id: '@id',
+                        strDate: $('#str_datetime').val(),
+                    },
+                    'dataSrc': function (data) {
+                        return data['result'];
+                    }
+                },
+                'columns': [
+                    { 'data': '科別', 'width': '15%', 'class': 'align-middle' },
+                    { 'data': '診別', 'width': '15%', 'class': 'align-middle' },
+                    { 'data': '班別', 'width': '15%', 'class': 'align-middle' },
+                    { 'data': '代號', 'width': '15%', 'class': 'align-middle' },
+                    { 'data': '姓名', 'width': '20%', 'class': 'align-middle' },
+                    { 'data': '備註', 'width': '40%', 'class': 'align-middle' },
+                ],
+                'ordering': false,
+                'destroy': true,
+                'pageLength': 100,
+                'fixedHeader': true,
+                'initComplete': function () {
+                    this.api().columns().every(function () {
+                        var column = this;
+                        var select = $('<select class="custom-select custom-select-sm form-control form-control-sm"><option value="">全部</option></select>')
+                            .appendTo($(column.header()))
+                            .on('change', function () {
+                                var val = $.fn.dataTable.util.escapeRegex(
+                                    $(this).val()
+                                );
+                                column
+                                    .search(val ? '^' + val + '$' : '', true, false)
+                                    .draw();
+                            });
+                        column.data().unique().sort().each(function (d, j) {
+                            select.append('<option value="' + d + '">' + d + '</option>')
+                        });
+                    });
+                }
+            });
+
+            $('#dataTable_second').DataTable({
+                'ajax': {
+                    'type': 'GET',
+                    'url': '@doctorUrl',
+                    'dataType': 'json',
+                    'data': {
+                        id: '@id',
+                        strDate: $('#str_datetime').val(),
+                    },
+                    'dataSrc': function (data) {
+                        return data['resultSecond'];
+                    }
+                },
+                'columns': [
+                    { 'data': '科別', 'width': '20%' },
+                    { 'data': '診別', 'width': '20%' },
+                    { 'data': '班別', 'width': '20%' },
+                    { 'data': '代號', 'width': '20%' },
+                    { 'data': '姓名', 'width': '20%' },
+                ],
+                'ordering': false,
+                'destroy': true,
+                'pageLength': 100,
+                'fixedHeader': true,
+                'initComplete': function () {
+                    this.api().columns().every(function () {
+                        var column = this;
+                        var select = $('<select class="custom-select custom-select-sm form-control form-control-sm"><option value="">全部</option></select>')
+                            .appendTo($(column.header()))
+                            .on('change', function () {
+                                var val = $.fn.dataTable.util.escapeRegex(
+                                    $(this).val()
+                                );
+                                column
+                                    .search(val ? '^' + val + '$' : '', true, false)
+                                    .draw();
+                            });
+                        column.data().unique().sort().each(function (d, j) {
+                            select.append('<option value="' + d + '">' + d + '</option>')
+                        });
+                    });
+                }
+            });
+        }
+
+    </script>
+}
+

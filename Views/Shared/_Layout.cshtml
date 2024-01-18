@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - dapper_dynamic</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/dotnet_user.styles.css" asp-append-version="true" />
+
+    <!-- Core JavaScript-->
+   @*  <script src="~/js/app.js"></script> *@
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="~/favicon.ico">
+
+    <!-- Fonts -->
+    <!--
+    <link rel="dns-prefetch" href="//fonts.gstatic.com">
+    <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Nunito">
+    -->
+    <!-- Fontawesome -->
+    <link rel="stylesheet" href="~/css/fontawesome/css/all.min.css">
+
+    <!-- Admin Css -->
+    <link rel="stylesheet" href="~/css/admin.css">
+
+    <!-- DataTables -->
+    <link rel="stylesheet" href="~/js/datatables/dataTables.bootstrap4.css">
+    <link rel="stylesheet" href="~/js/datatables/FixedHeader/css/fixedHeader.bootstrap4.css">
+
+    <!-- Date Picker -->
+    <link rel="stylesheet" href="~/js/datepicker/dist/css/bootstrap-datepicker3.css">
+
+</head>
+    <body id="page-top" class="sidebar-toggled">
+
+        <nav class="navbar navbar-expand navbar-dark bg-dark static-top">
+
+        <a href="@Url.Action("Index", "Home", new { id = default(string) })?id=@Context.Request.Query["id"]" title="宏恩醫療財團法人宏恩綜合醫院">
+            <img src="~/Logo.png" width="280" alt="宏恩醫療財團法人宏恩綜合醫院">
+        </a>
+
+
+            <button class="btn btn-link btn-sm text-white order-1 order-sm-0" id="sidebarToggle" href="#">
+                <i class="fas fa-bars"></i>
+            </button>
+
+        </nav>
+
+        <div id="wrapper">
+
+            <ul class="sidebar navbar-nav toggled">
+                <li class="nav-item active">
+                <a class="nav-link" href="@Url.Action("Index", "Home", new { id = default(string) })?id=@Context.Request.Query["id"]">
+                        <i class="fas fa-home"></i>
+                        <span>首頁</span> 
+                    </a>
+                </li>
+
+                @if (ViewData["UserRights"] is IEnumerable<dynamic> userRights)
+                {
+                    foreach (var right in userRights)
+                    {
+                        var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
+                        var actionUrl = "/" + right.name + "?id=" + id;
+                        <li class="nav-item active">
+                        <a class="nav-link" href="@actionUrl">
+                                <i class="@right.icon"></i>
+                                <span>@right.name</span>
+                            </a>
+                        </li>
+                    }
+                }
+            </ul>
+
+            <div id="content-wrapper">
+
+                <div class="container-fluid">
+
+                    @RenderBody()
+
+                </div>
+
+                <!-- Sticky Footer -->
+                <footer class="sticky-footer">
+                    <div class="container my-auto">
+                        <div class="text-center my-auto">
+                            <small>版權所有 © 2019 本網站內容屬「宏恩醫療財團法人宏恩綜合醫院」所有，未經授權禁止以任何形式儲存、散佈或重製。</small>
+                        </div>
+                    </div>
+                </footer>
+
+            </div>
+
+        </div>
+
+        <!-- Scroll to Top Button-->
+        <a id="back-to-top" href="#" class="btn btn-primary back-to-top" role="button"><i class="fas fa-angle-up fa-lg"></i></a>
+
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <!-- DataTables -->
+    <script src="~/js/datatables/jquery.dataTables.js"></script>
+    <script src="~/js/datatables/dataTables.bootstrap4.js"></script>
+    <script src="~/js/datatables/FixedHeader/js/dataTables.fixedHeader.min.js"></script>
+
+    <!-- Moment JS -->
+    <script src="~/js/moment.min.js"></script>
+
+    <!-- Date Picker -->
+    <script src="~/js/datepicker/js/bootstrap-datepicker.js"></script>
+    <script src="~/js/datepicker/js/locales/bootstrap-datepicker.zh-TW.js"></script>
+
+    <!-- Cleave JS -->
+    <script src="~/js/cleave.min.js"></script>
+
+    <!-- 可以根据需要添加其他 JavaScript 文件 -->
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,46 @@
+table.dataTable.fixedHeader-floating,
+table.dataTable.fixedHeader-locked {
+    background-color: white;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+table.dataTable.fixedHeader-floating {
+    position: fixed !important;
+}
+
+table.dataTable.fixedHeader-locked {
+    position: absolute !important;
+}
+
+@media print {
+    table.fixedHeader-floating {
+        display: none;
+    }
+}
+/*@media (max-width: 575.98px) {*/
+/*    table.dataTable.fixedHeader-floating {*/
+/*        top: 72px !important;*/
+/*    }*/
+/*}*/
+/*@media (min-width: 576px) {*/
+/*    table.dataTable.fixedHeader-floating {*/
+/*        top: 72px !important;*/
+/*    }*/
+/*}*/
+/*@media (min-width: 767.98px) {*/
+/*    table.dataTable.fixedHeader-floating {*/
+/*        top: 112px !important;*/
+/*    }*/
+/*}*/
+
+/*@media (min-width: 991.98px) {*/
+/*    table.dataTable.fixedHeader-floating {*/
+/*        top: 128px !important;*/
+/*    }*/
+/*}*/
+/*@media (min-width: 1200px) {*/
+/*    table.dataTable.fixedHeader-floating {*/
+/*        top: 128px !important;*/
+/*    }*/
+/*}*/

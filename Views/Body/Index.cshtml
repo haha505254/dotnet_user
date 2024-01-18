@@ -1,0 +1,301 @@
+﻿<!-- Views/Body/Index.cshtml -->
+@{
+    var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
+    var recordUrl = Url.Action("Record", "生理量測記錄");
+}
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="fas fa-chart-area"></i>
+        生理量測記錄
+    </div>
+    <div class="card-body">
+        <div class="alert alert-primary" role="alert">
+            <div class="row">
+                <div class="col-4 input-group">
+                    <label for="str_datetime" class="d-none">選擇開始日期</label>
+                    <input type="text" id="str_datetime" class="form-control" placeholder="選擇開始日期" value="@ViewData["StrDate"]">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text str_calendar"><i class="far fa-calendar-alt"></i></span>
+                    </div>
+                </div>
+                <div class="col-4 input-group">
+                    <label for="end_datetime" class="d-none">選擇結束日期</label>
+                    <input type="text" id="end_datetime" class="form-control" placeholder="選擇結束日期" value="@ViewData["EndDate"]">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text end_calendar"><i class="far fa-calendar-alt"></i></span>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <label class="input-group-text" for="changeDate">依結束日期</label>
+                        </div>
+                        <select class="custom-select" id="changeDate">
+                            <option selected>請選擇</option>
+                            <option value="10">前10天</option>
+                            <option value="30" selected>前30天</option>
+                            <option value="60">前60天</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <canvas id="lineChart" width="100%" height="30"></canvas>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="far fa-file-alt"></i>
+        參考數值
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-4">
+                <table class="table table-hover table-bordered">
+                    <thead class="bg-primary text-white text-center">
+                        <tr>
+                            <th colspan="2">脈搏</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-center">
+                        <tr>
+                            <td>過慢</td>
+                            <td>&lt;60 次 /分</td>
+                        </tr>
+                        <tr>
+                            <td>正常</td>
+                            <td>60-100 次/分</td>
+                        </tr>
+                        <tr>
+                            <td>過快</td>
+                            <td>>100 次/分</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-4">
+                <table class="table table-hover table-bordered">
+                    <thead class="bg-primary text-white text-center">
+                        <tr>
+                            <th colspan="2">體溫</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-center">
+                        <tr>
+                            <td>偏低</td>
+                            <td>≦35 °C</td>
+                        </tr>
+                        <tr>
+                            <td>正常</td>
+                            <td>35 °C < 體溫 ≦37.8 °C</td>
+                        </tr>
+                        <tr>
+                            <td>可能發燒</td>
+                            <td>>37.8 °C</td>
+                        </tr>
+                        <tr>
+                            <td>發燒</td>
+                            <td>≧38 °C</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-4">
+                <table class="table table-hover table-bordered">
+                    <thead class="bg-primary text-white text-center">
+                        <tr>
+                            <th colspan="3">血壓</th>
+                        </tr>
+                        <tr>
+                            <th>分類</th>
+                            <th>收縮壓</th>
+                            <th>舒張壓</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-center">
+                        <tr>
+                            <td>偏低</td>
+                            <td>&lt;90</td>
+                            <td>&lt;60</td>
+                        </tr>
+                        <tr>
+                            <td>正常</td>
+                            <td>90-119</td>
+                            <td>60-79</td>
+                        </tr>
+                        <tr>
+                            <td>高血壓前期</td>
+                            <td>120-139</td>
+                            <td>80-89</td>
+                        </tr>
+                        <tr>
+                            <td>第一期高血壓</td>
+                            <td>140-159</td>
+                            <td>90-99</td>
+                        </tr>
+                        <tr>
+                            <td>第二期高血壓</td>
+                            <td>≧160</td>
+                            <td>≧100</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="alert alert-primary mt-2" role="alert">
+                    單位：mm-Hg。
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+
+    <script src="~/js/chart.min.js"></script>
+    <script type="text/javascript">
+
+        $(document).ready(function () {
+            new Cleave('#str_datetime', {
+                delimiter: '-',
+                blocks: [4, 2, 2]
+            });
+
+            new Cleave('#end_datetime', {
+                delimiter: '-',
+                blocks: [4, 2, 2]
+            });
+
+            $('#str_datetime, #end_datetime').datepicker({
+                todayHighlight: true,
+                autoclose: true,
+                format: 'yyyy-mm-dd',
+                language: "zh-TW",
+                dateFormat: 'yy-mm-dd',
+            });
+
+            $('.str_calendar').click(function () {
+                $('#str_datetime').datepicker('show');
+            });
+
+            $('.end_calendar').click(function () {
+                $('#end_datetime').datepicker('show');
+            });
+
+            ajaxDate();
+
+            $('.search').click(function () {
+                line.destroy();
+                ajaxDate();
+            });
+
+            $('#str_datetime, #end_datetime').on('change', function () {
+                line.destroy();
+                ajaxDate();
+            });
+
+            $('#changeDate').on('change', function () {
+                let end_date = parseInt($('#end_datetime').val().substr(0, 4)) + '-' + $('#end_datetime').val().substr(5, 2) + '-' + $('#end_datetime').val().substr(8, 2);
+                end_date = moment(end_date, "YYYY-MM-DD").subtract(this.value, 'days').format('YYYY-MM-DD');
+                $('#str_datetime').datepicker(
+                    'setDates', [end_date.substr(0, 4) + '-' + end_date.substr(5, 2) + '-' + end_date.substr(8, 2)]
+                );
+            });
+
+        });
+
+        function ajaxDate() {
+
+            $.ajax({
+                type: 'GET',
+                url: '@recordUrl',
+                dataType: 'json',
+                data: {
+                    id: '@id',
+                str_date: $('#str_datetime').val(),
+                end_date: $('#end_datetime').val()
+            },
+                success: function (data) {
+                    let date = [];
+                    let data1 = [];
+                    let data2 = [];
+                    let data3 = [];
+                    let data4 = [];
+                    for (let i in data['date']) {
+                        date.push(data['date'][i].substr(0, 2) + '/' + data['date'][i].substr(2, 2));
+                        if (data['data1'][i] == 0) {
+                            data1.push(null);
+                        } else {
+                            data1.push(data['data1'][i]);
+                        }
+                        if (data['data2'][i] == 0) {
+                            data2.push(null);
+                        } else {
+                            data2.push(data['data2'][i]);
+                        }
+                        if (data['data3'][i] == 0) {
+                            data3.push(null);
+                        } else {
+                            data3.push(data['data3'][i]);
+                        }
+                        if (data['data4'][i] == 0) {
+                            data4.push(null);
+                        } else {
+                            data4.push(data['data4'][i]);
+                        }
+                    }
+                    lineChart(date, data1, data2, data3, data4);
+                }
+                    });
+                }
+
+        function lineChart(date, data1, data2, data3, data4) {
+            line = new Chart(document.getElementById("lineChart"), {
+                type: 'line',
+                data: {
+                    labels: date,
+                    datasets: [{
+                        data: data1,
+                        label: '脈搏',
+                        borderColor: 'rgba(236, 30, 61, 0.5)',
+                        backgroundColor: 'rgba(236, 30, 61, 1)',
+                        fill: false
+                    }, {
+                        data: data2,
+                        label: '收縮壓',
+                        borderColor: 'rgba(252, 184, 22, 0.5)',
+                        backgroundColor: 'rgba(252, 184, 22, 1)',
+                        fill: false
+                    }, {
+                        data: data3,
+                        label: '舒張壓',
+                        borderColor: 'rgba(142, 198, 66, 0.5)',
+                        backgroundColor: 'rgba(142, 198, 66, 1)',
+                        fill: false
+                    }, {
+                        data: data4,
+                        label: '體溫',
+                        borderColor: 'rgba(43, 180, 232, 0.5)',
+                        backgroundColor: 'rgba(43, 180, 232, 1)',
+                        fill: false
+                    }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    spanGaps: true,
+                    tooltips: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    hover: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                }
+            });
+        }
+    </script>
+}
+
