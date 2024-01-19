@@ -56,32 +56,43 @@ namespace dotnet_user.Controllers
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
-            // 從服務獲取動態數據
             var dynamicData = await _biopsyService.GetBiopsyData(str_date, end_date);
 
-            // 將動態數據轉換為強類型集合
-            var records = new List<BiopsyData>();
-            foreach (var item in dynamicData)
+            var records = dynamicData.Select(item => new
             {
-                var record = new BiopsyData
-                {
-                    來源 = item.來源,
-                    Counter = item.counter,
-                    處置檔 = item.處置檔,
-                    開單日期 = item.開單日期,
-                    病歷號碼 = item.病歷號碼,
-                    姓名 = item.姓名,
-                    科別 = item.科別,
-                    醫師 = item.醫師
-                };
-                records.Add(record);
-            }
+                item.來源,
+                item.counter,
+                item.處置檔,
+                item.開單日期,
+                item.病歷號碼,
+                item.姓名,
+                item.科別,
+                item.醫師
+            }).ToList();
 
-            // 創建 Excel 文件
             using (var package = new ExcelPackage())
             {
                 var worksheet = package.Workbook.Worksheets.Add("Biopsy Data");
-                worksheet.Cells["A1"].LoadFromCollection(records, true);
+
+                var properties = records.FirstOrDefault()?.GetType().GetProperties();
+                int row = 1;
+
+                if (properties != null)
+                {
+                    for (int i = 0; i < properties.Length; i++)
+                    {
+                        worksheet.Cells[row, i + 1].Value = properties[i].Name;
+                    }
+
+                    foreach (var record in records)
+                    {
+                        row++;
+                        for (int i = 0; i < properties.Length; i++)
+                        {
+                            worksheet.Cells[row, i + 1].Value = properties[i].GetValue(record, null)?.ToString();
+                        }
+                    }
+                }
 
                 var stream = new MemoryStream();
                 package.SaveAs(stream);
@@ -91,17 +102,5 @@ namespace dotnet_user.Controllers
             }
         }
     }
-    public class BiopsyData
-    {
-        public string? 來源 { get; set; }
-        public string? Counter { get; set; }
-        public string? 處置檔 { get; set; }
-        public string? 開單日期 { get; set; }
-        public string? 病歷號碼 { get; set; }
-        public string? 姓名 { get; set; }
-        public string? 科別 { get; set; }
-        public string? 醫師 { get; set; }
-    }
-
 
 }
