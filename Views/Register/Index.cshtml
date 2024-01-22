@@ -1,0 +1,104 @@
+﻿@{
+    var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
+    var recordUrl = Url.Action("register", "預掛名單");
+}
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="fas fa-list"></i>
+        預掛名單
+    </div>
+    <div class="card-body">
+        <div class="alert alert-primary" role="alert">
+            <div class="row">
+                <div class="px-2">
+                    <span class="align-middle">請選擇欲查詢的日期</span>
+                </div>
+                <div class="col-3 input-group">
+                    <label for="str_datetime" class="d-none">請選擇欲查詢的日期</label>
+                    <input type="text" id="str_datetime" class="form-control" placeholder="請選擇欲查詢的日期"
+                           value="@ViewData["StrDate"]">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text str_calendar"><i class="far fa-calendar-alt"></i></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <table id="dataTable" class="table table-hover table-striped table-bordered text-center">
+            <thead>
+                <tr>
+                    <th>病歷號碼</th>
+                    <th>身份證字號</th>
+                    <th>患者姓名</th>
+                    <th>掛號序號</th>
+                    <th>科別</th>
+                    <th>診別</th>
+                    <th>班別</th>
+                    <th>姓名</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <script type="text/javascript">
+        $(document).ready(function () {
+            new Cleave('#str_datetime', {
+                delimiter: '-',
+                blocks: [4, 2, 2]
+            });
+
+            $('#str_datetime').datepicker({
+                todayHighlight: true,
+                autoclose: true,
+                format: 'yyyy-mm-dd',
+                language: "zh-TW",
+                dateFormat: 'yy-mm-dd',
+            });
+
+            ajaxDate();
+
+            $('.str_calendar').click(function () {
+                $('#str_datetime').datepicker('show');
+            });
+
+            $('#str_datetime').on('change', function () {
+                ajaxDate();
+            });
+        });
+
+        function ajaxDate() {
+            $('#dataTable').DataTable({
+                'ajax': {
+                    'type': 'GET',
+                    'url': '@recordUrl',
+                'dataType': 'json',
+                'data': {
+                        id: '@id',
+                        str_date: $('#str_datetime').val(),
+                },
+                'dataSrc': function (data) {
+                    return data;
+                }
+            },
+                'columns': [
+                { 'data': '病歷號碼' },
+                { 'data': '身份證字號' },
+                { 'data': '患者姓名' },
+                { 'data': '掛號序號' },
+                { 'data': '科別' },
+                { 'data': '診別' },
+                { 'data': '班別' },
+                { 'data': '姓名' },
+            ],
+                'order': [[4], [5], [6], [3]],
+                'destroy': true,
+                pageLength: 100,
+                fixedHeader: true
+                    });
+                }
+    </script>
+}
+

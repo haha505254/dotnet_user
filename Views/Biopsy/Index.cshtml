@@ -1,6 +1,8 @@
 ﻿@{
     var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
     var biopsyUrl = Url.Action("Biopsy", "切片報告管理");
+    var biopsyDownloadDetailUrl = Url.Action("downloadDetail", "切片報告管理");
+    var biopsyDownloadSqlUrl = Url.Action("downloadSql", "切片報告管理");
 }
 
 <div class="card mb-3">
@@ -28,13 +30,13 @@
                     </div>
                 </div>
                 <div class="col-2">
-                    <a id="detail" class="form-control btn-warning nav-link text-center" href="{{ url('切片報告管理/downloadDetail' . '?id=' . Request::input('id')) }}" target="_blank">
+                    <a id="detail" class="form-control btn-warning nav-link text-center" href="@($"{biopsyDownloadDetailUrl}?id={id}")" target="_blank">
                         <i class="fas fa-download"></i>
                         <span>明細下載（.xls）</span>
                     </a>
                 </div>
                 <div class="col-2">
-                    <a id="sql" class="form-control btn-info nav-link text-center" href="{{ url('切片報告管理/downloadSql' . '?id=' . Request::input('id')) }}" target="_blank">
+                    <a id="sql" class="form-control btn-info nav-link text-center" href="@($"{biopsyDownloadSqlUrl}?id={id}")" target="_blank">
                         <i class="fas fa-download"></i>
                         <span>語法下載（.xls）</span>
                     </a>

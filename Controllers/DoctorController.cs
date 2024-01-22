@@ -40,7 +40,7 @@ namespace dotnet_user.Controllers
 
             strDate = !string.IsNullOrEmpty(strDate) ? strDate.Replace("-", "") : _dateService.GetStartDate(0);
             var week = _dateService.GetWeekDay(strDate);
-            week = week == "0" ? "7" : week; // 確保使用字符串進行比較
+            week = week == "0" ? "7" : week; 
             _logger.LogInformation($"Original date: {strDate}");
             strDate = (int.Parse(strDate.Substring(0, 4)) - 1911).ToString() + strDate.Substring(4, 4);
             _logger.LogInformation($"Converted date: {strDate}");

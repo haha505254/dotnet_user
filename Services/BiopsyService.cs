@@ -97,20 +97,10 @@ namespace dotnet_user.Services
                 combinedRecords = outpatientRecords.Concat(inpatientRecords).ToList();
             }
 
-            var result = combinedRecords.Select(record => new
-            {
-                來源 = record.來源 == 0 ? "門診" : "住診",
-                counter = record.counter.ToString(),
-                處置檔 = record.處置檔.ToString(),
-                開單日期 = record.開單日期.ToString(),
-                病歷號碼 = record.病歷號碼.ToString(),
-                姓名 = record.姓名.ToString(),
-                科別 = record.科別.ToString(),
-                醫師 = record.醫師.ToString()
-            }).ToList();
 
 
-            return result;
+
+            return combinedRecords;
         }
     }
 }
