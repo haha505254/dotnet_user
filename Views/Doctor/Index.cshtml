@@ -1,10 +1,7 @@
-﻿
-@{
+﻿@{
     var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
     var doctorUrl = Url.Action("Doctor", "醫師時段查詢");
 }
-
-
 
 <div class="alert alert-primary" role="alert">
     <div class="row">

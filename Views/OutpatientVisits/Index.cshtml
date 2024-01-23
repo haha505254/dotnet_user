@@ -1,0 +1,60 @@
+﻿@{
+    var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
+    var doctorUrl = Url.Action("Doctor", "醫師時段查詢");
+}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="fas fa-user-nurse"></i>
+        門診看診人數
+    </div>
+    <div class="card-body">
+        <div class="alert alert-primary" role="alert">
+            <div class="row">
+                <div class="col-3 input-group">
+                    <label for="str_datetime" class="d-none">選擇開始日期</label>
+                    <input type="text" id="str_datetime" class="form-control" placeholder="選擇開始日期"
+                           value="@ViewData["StrDate"]">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text str_calendar"><i class="far fa-calendar-alt"></i></span>
+                    </div>
+                </div>
+                <div class="col-3 input-group">
+                    <label for="end_datetime" class="d-none">選擇結束日期</label>
+                    <input type="text" id="end_datetime" class="form-control" placeholder="選擇結束日期"
+                           value="@ViewData["EndDate"]">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text end_calendar"><i class="far fa-calendar-alt"></i></span>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text"><i class="fas fa-greater-than-equal"></i></span>
+                        </div>
+                        <input type="text" class="form-control" id="count" name="count" value="@ViewData["Count"]">
+                        <div class="input-group-append">
+                            <span class="input-group-text">人</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <a id="detail" class="form-control btn-warning nav-link text-center" href="{{ url('門診看診人數/downloadDetail?id=' . Request::input('id')) }}" target="_blank">
+                        <i class="fas fa-download"></i>
+                        <span>明細下載（.xls）</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <table id="dataTable" class="table table-hover table-striped table-bordered text-center">
+            <thead>
+                <tr>
+                    <th>掛號日期</th>
+                    <th>看診班別</th>
+                    <th>醫師姓名</th>
+                    <th>看診人數</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>

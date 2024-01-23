@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@{
+    var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.PathBase}";
+    var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
+}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -62,8 +66,7 @@
                 {
                     foreach (var right in userRights)
                     {
-                        var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
-                        var actionUrl = "/" + right.name + "?id=" + id;
+                        var actionUrl = $"{baseUrl}/{right.name}?id={id}";
                         <li class="nav-item active">
                         <a class="nav-link" href="@actionUrl">
                                 <i class="@right.icon"></i>
