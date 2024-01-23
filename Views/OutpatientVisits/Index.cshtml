@@ -1,6 +1,6 @@
 ﻿@{
     var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
-    var doctorUrl = Url.Action("Doctor", "醫師時段查詢");
+    var outpatientVisitsUrl = Url.Action("outpatientVisits", "門診看診人數");
 }
 
 <div class="card mb-3">
@@ -58,3 +58,82 @@
         </table>
     </div>
 </div>
+
+@section Scripts {
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            new Cleave('#str_datetime', {
+                delimiter: '-',
+                blocks: [4, 2, 2]
+            });
+
+            new Cleave('#end_datetime', {
+                delimiter: '-',
+                blocks: [4, 2, 2]
+            });
+
+            $('#str_datetime, #end_datetime').datepicker({
+                todayHighlight: true,
+                autoclose: true,
+                format: 'yyyy-mm-dd',
+                language: "zh-TW",
+                dateFormat: 'yy-mm-dd',
+            });
+
+            $('.str_calendar').click(function () {
+                $('#str_datetime').datepicker('show');
+            });
+
+            $('.end_calendar').click(function () {
+                $('#end_datetime').datepicker('show');
+            });
+
+            ajaxDate();
+
+            $('#str_datetime, #end_datetime, #count').on('change', function () {
+                $('#detail').attr('href', '#' + $.urlParam('id') + '&str_date=' + $('#str_datetime').val() + '&end_date=' + $('#end_datetime').val() + '&count=' + $('#count').val());
+                ajaxDate();
+            });
+        });
+
+
+        $.urlParam = function (name) {
+            let results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+            if (results == null) {
+                return null;
+            }
+            return decodeURI(results[1]) || 0;
+        };
+
+        function ajaxDate() {
+            $('#dataTable').DataTable({
+                'ajax': {
+                    'type': 'GET',
+                    'url': '@outpatientVisitsUrl',
+                'dataType': 'json',
+                'data': {
+                    id: '@id',
+                    str_date: $('#str_datetime').val(),
+                    end_date: $('#end_datetime').val(),
+                    count: $('#count').val()
+                },
+                'dataSrc': function (data) {
+                    return data;
+                }
+            },
+                'columns': [
+                { 'data': '掛號日期' },
+                { 'data': '看診班別' },
+                { 'data': '醫師姓名' },
+                { 'data': '看診人數' },
+            ],
+                'order': [[0, 'asc']],
+                'destroy': true,
+                pageLength: 25,
+                fixedHeader: true
+                    });
+                }
+
+    </script>
+}
