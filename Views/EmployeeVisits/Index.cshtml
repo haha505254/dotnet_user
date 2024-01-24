@@ -1,0 +1,143 @@
+﻿@{
+    var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
+    var employeeVisitsUrl = Url.Action("employeeVisits", "院內看診明細");
+    var employeeVisitsDownloadDetailUrl = Url.Action("downloadDetail", "院內看診明細");
+}
+
+
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="far fa-hospital"></i>
+        院內看診明細
+    </div>
+    <div class="card-body">
+        <div class="alert alert-primary" role="alert">
+            <div class="row">
+                <div class="col-3 input-group">
+                    <label for="str_datetime" class="d-none">選擇開始日期</label>
+                    <input type="text" id="str_datetime" class="form-control" placeholder="選擇開始日期"
+                           value="@ViewData["StrDate"]">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text str_calendar"><i class="far fa-calendar-alt"></i></span>
+                    </div>
+                </div>
+                <div class="col-3 input-group">
+                    <label for="end_datetime" class="d-none">選擇結束日期</label>
+                    <input type="text" id="end_datetime" class="form-control" placeholder="選擇結束日期"
+                           value="@ViewData["EndDate"]">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text end_calendar"><i class="far fa-calendar-alt"></i></span>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <a id="detail" class="form-control btn-warning nav-link text-center" href="@($"{employeeVisitsDownloadDetailUrl}?id={id}")" target="_blank">
+                        <i class="fas fa-download"></i>
+                        <span>明細下載（.xls）</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <table id="dataTable" class="table table-hover table-striped table-bordered text-center">
+            <thead>
+                <tr>
+                    <th>類別</th>
+                    <th>醫師代號</th>
+                    <th>醫師姓名</th>
+                    <th>病歷號碼</th>
+                    <th>患者姓名</th>
+                    <th>就診日</th>
+                    <th>結束日</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+
+@section Scripts {
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+            new Cleave('#str_datetime', {
+                delimiter: '-',
+                blocks: [4, 2, 2]
+            });
+
+            new Cleave('#end_datetime', {
+                delimiter: '-',
+                blocks: [4, 2, 2]
+            });
+
+            $('#str_datetime, #end_datetime').datepicker({
+                todayHighlight: true,
+                autoclose: true,
+                format: 'yyyy-mm-dd',
+                language: "zh-TW",
+                dateFormat: 'yy-mm-dd',
+            });
+
+            $('.str_calendar').click(function () {
+                $('#str_datetime').datepicker('show');
+            });
+
+            $('.end_calendar').click(function () {
+                $('#end_datetime').datepicker('show');
+            });
+
+            ajaxDate();
+
+            $('#str_datetime, #end_datetime').on('change', function () {
+                var baseUrl = '@Url.Action("downloadDetail", "院內看診明細")';
+                var idParam = $.urlParam('id');
+                var strDate = encodeURIComponent($('#str_datetime').val());
+                var endDate = encodeURIComponent($('#end_datetime').val());
+
+                var newUrl = baseUrl + '?id=' + idParam + '&str_date=' + strDate + '&end_date=' + endDate;
+
+                $('#detail').attr('href', newUrl);
+                ajaxDate();
+            });
+
+            $.urlParam = function (name) {
+                let results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+                if (results == null) {
+                    return null;
+                }
+                return decodeURI(results[1]) || 0;
+            };
+
+            function ajaxDate() {
+                $('#dataTable').DataTable({
+                    'ajax': {
+                        'type': 'GET',
+                        'url': '@employeeVisitsUrl',
+                        'dataType': 'json',
+                        'data': {
+                            id: '@id',
+                            str_date: $('#str_datetime').val(),
+                            end_date: $('#end_datetime').val(),
+                            count: $('#count').val()
+                        },
+                        'dataSrc': function (data) {
+                            return data;
+                        }
+                    },
+                    'columns': [
+                        { 'data': '類別' },
+                        { 'data': '醫師代號' },
+                        { 'data': '醫師姓名' },
+                        { 'data': '病歷號碼' },
+                        { 'data': '患者姓名' },
+                        { 'data': '就診日' },
+                        { 'data': '結束日' },
+                    ],
+                    'order': [[0, 'asc']],
+                    'destroy': true,
+                    pageLength: 25,
+                    fixedHeader: true
+                });
+            }
+        });
+
+    </script>
+}

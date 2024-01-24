@@ -7,6 +7,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<DateService>();
 builder.Services.AddScoped<BiopsyService>();
 builder.Services.AddScoped<OutpatientVisitsService>();
+builder.Services.AddScoped<EmployeeVisitsService>();
 
 var app = builder.Build();
 
