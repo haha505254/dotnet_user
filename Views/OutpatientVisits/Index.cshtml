@@ -1,6 +1,7 @@
 ﻿@{
     var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
     var outpatientVisitsUrl = Url.Action("outpatientVisits", "門診看診人數");
+    var outpatientVisitsDownloadDetailUrl = Url.Action("downloadDetail", "門診看診人數");
 }
 
 <div class="card mb-3">
@@ -39,7 +40,9 @@
                     </div>
                 </div>
                 <div class="col-3">
-                    <a id="detail" class="form-control btn-warning nav-link text-center" href="{{ url('門診看診人數/downloadDetail?id=' . Request::input('id')) }}" target="_blank">
+                    <a id="detail" class="form-control btn-warning nav-link text-center"
+                       href="@($"{outpatientVisitsDownloadDetailUrl}?id={id}")"
+                       target="_blank">
                         <i class="fas fa-download"></i>
                         <span>明細下載（.xls）</span>
                     </a>
@@ -92,19 +95,25 @@
             ajaxDate();
 
             $('#str_datetime, #end_datetime, #count').on('change', function () {
-                $('#detail').attr('href', '#' + $.urlParam('id') + '&str_date=' + $('#str_datetime').val() + '&end_date=' + $('#end_datetime').val() + '&count=' + $('#count').val());
+                var baseUrl = '@Url.Action("downloadDetail", "門診看診人數")';
+                var idParam = $.urlParam('id');
+                var strDate = encodeURIComponent($('#str_datetime').val());
+                var endDate = encodeURIComponent($('#end_datetime').val());
+                var count = encodeURIComponent($('#count').val());
+
+                var newUrl = baseUrl + '?id=' + idParam + '&str_date=' + strDate + '&end_date=' + endDate + '&count=' + count;
+
+                $('#detail').attr('href', newUrl);
                 ajaxDate();
             });
-        });
 
-
-        $.urlParam = function (name) {
-            let results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
-            if (results == null) {
-                return null;
-            }
-            return decodeURI(results[1]) || 0;
-        };
+            $.urlParam = function (name) {
+                let results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+                if (results == null) {
+                    return null;
+                }
+                return decodeURI(results[1]) || 0;
+            };
 
         function ajaxDate() {
             $('#dataTable').DataTable({
@@ -133,7 +142,8 @@
                 pageLength: 25,
                 fixedHeader: true
                     });
-                }
+         }
+        }); // <-- 這裡是新增的閉合花括號
 
     </script>
 }

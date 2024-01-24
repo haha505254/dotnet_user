@@ -86,13 +86,13 @@ namespace dotnet_user.Services
                         AND a.完診代碼 = '5'
                         AND b.代碼名稱 = '班別代碼'
                     GROUP BY a.掛號日期, b.代碼內容, c.姓名
-                    HAVING COUNT(a.counter) >= @count";
+                    HAVING COUNT(a.counter) >= @countValue";
 
                 var parameters = new
                 {
                     str_date,
                     end_date,
-                    count
+                    countValue
                 };
 
                 var result = await connection.QueryAsync<dynamic>(query, parameters);

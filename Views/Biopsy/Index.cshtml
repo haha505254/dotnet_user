@@ -92,9 +92,17 @@
             ajaxDate();
 
             $('#str_datetime, #end_datetime').on('change', function () {
-
-                // $('#detail').attr('href', '{{ url('切片報告管理 / downloadDetail ? id = ') }}' + $.urlParam('id') + '&str_date=' + $('#str_datetime').val() + '&end_date=' + $('#end_datetime').val());
-                // $('#sql').attr('href', '{{ url('切片報告管理 / downloadSql ? id = ') }}' + $.urlParam('id') + '&str_date=' + $('#str_datetime').val() + '&end_date=' + $('#end_datetime').val());
+                var basedownloadDetailUrl = '@Url.Action("downloadDetail", "切片報告管理")';
+                var basedownloadSqlUrl = '@Url.Action("downloadSql", "切片報告管理")';
+                var idParam = $.urlParam('id');
+                var strDate = encodeURIComponent($('#str_datetime').val());
+                var endDate = encodeURIComponent($('#end_datetime').val());
+                var count = encodeURIComponent($('#count').val());
+                var newdownloadDetailUrl = basedownloadDetailUrl + '?id=' + idParam + '&str_date=' + strDate + '&end_date=' + endDate + '&count=' + count;
+                var newdownloadSqlUrl = basedownloadSqlUrl + '?id=' + idParam + '&str_date=' + strDate + '&end_date=' + endDate + '&count=' + count;
+                $('#detail').attr('href', newdownloadDetailUrl);
+                $('#sql').attr('href', newdownloadSqlUrl);
+                
                 ajaxDate();
             });
         });
