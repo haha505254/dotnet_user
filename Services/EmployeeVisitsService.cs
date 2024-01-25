@@ -24,35 +24,6 @@ namespace dotnet_user.Services
         public async Task<IEnumerable<dynamic>> GetEmployeeVisitsData(string str_date, string end_date)
         {
 
-            // Your existing logic to format and process dates goes here
-            str_date = str_date.Replace("-", "");
-            end_date = end_date.Replace("-", "");
-            // 處理 str_date
-            if (!string.IsNullOrEmpty(str_date) && DateTime.TryParseExact(str_date, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedStartDate))
-            {
-                str_date = parsedStartDate.AddDays(-1).ToString("yyyyMMdd");
-            }
-            else
-            {
-                str_date = _dateService.GetStartDate(30);
-            }
-
-            // 處理 end_date
-            if (!string.IsNullOrEmpty(end_date) && DateTime.TryParseExact(end_date, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedEndDate))
-            {
-                end_date = parsedEndDate.ToString("yyyyMMdd");
-            }
-            else
-            {
-                end_date = _dateService.GetCurrentDate();
-            }
-
-            // 將西元年份轉換為民國年份
-            str_date = (int.Parse(str_date.Substring(0, 4)) - 1911).ToString() + str_date.Substring(4, 4);
-            end_date = (int.Parse(end_date.Substring(0, 4)) - 1911).ToString() + end_date.Substring(4, 4);
-
-            _logger.LogInformation("{str_date} {end_date}", str_date, end_date);
-
             string connectionStringTgsql = _configuration.GetConnectionString("TgsqlConnection") ?? throw new InvalidOperationException("未在配置中找到 'TgsqlConnection' 連接字符串。");
 
             List<dynamic> combinedRecords;

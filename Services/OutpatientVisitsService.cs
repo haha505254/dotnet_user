@@ -25,19 +25,11 @@ namespace dotnet_user.Services
         public async Task<IEnumerable<dynamic>> GetOutpatientVisitsData(string str_date, string end_date, string count)
         {
             int countValue;
-            // 檢查 'count' 參數是否存在且不為空，如果是，則解析它，否則設為預設值 60
-            if (!string.IsNullOrEmpty(count) && int.TryParse(count, out countValue))
-            {
-                // count 參數有效，已解析為數字並賦值給 countValue
-            }
-            else
-            {
-                // count 參數不存在或無效，使用預設值 60
-                countValue = 60;
-            }
-            // Your existing logic to format and process dates goes here
+            countValue = !string.IsNullOrEmpty(count) && int.TryParse(count, out int temp) ? temp : 60;
+
             str_date = str_date.Replace("-", "");
             end_date = end_date.Replace("-", "");
+
             // 處理 str_date
             if (!string.IsNullOrEmpty(str_date) && DateTime.TryParseExact(str_date, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedStartDate))
             {
