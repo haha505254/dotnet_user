@@ -58,8 +58,6 @@ namespace dotnet_user.Services
 
             string connectionStringTgsql = _configuration.GetConnectionString("TgsqlConnection") ?? throw new InvalidOperationException("未在配置中找到 'TgsqlConnection' 連接字符串。");
 
-
-
             using (var connection = new SqlConnection(connectionStringTgsql))
             {
                 await connection.OpenAsync();

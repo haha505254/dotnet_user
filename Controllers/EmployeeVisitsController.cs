@@ -164,9 +164,5 @@ namespace dotnet_user.Controllers
                 return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "EmployeeVisitsData.xlsx");
             }
         }
-
-
-
-
     }
 }

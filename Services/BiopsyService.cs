@@ -97,9 +97,6 @@ namespace dotnet_user.Services
                 combinedRecords = outpatientRecords.Concat(inpatientRecords).ToList();
             }
 
-
-
-
             return combinedRecords;
         }
     }
