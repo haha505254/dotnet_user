@@ -1,0 +1,982 @@
+﻿@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+    var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
+}
+
+    <style>
+        .sorting_asc:before, .sorting_asc:after {
+            display: none !important;
+        }
+
+        .custom-border {
+            border-top: none;
+            border-bottom: none;
+        }
+
+        .modal-lg {
+            max-width: 1200px !important;
+        }
+
+        table {
+            width: inherit !important;
+        }
+
+        @@media print {
+            .navbar, .sidebar, .card, .sticky-footer {
+                visibility: hidden;
+            }
+
+            #print {
+                position: absolute;
+                left: 0px;
+                top: 10px;
+                visibility: visible;
+                display: block !important;
+            }
+
+            #print tr td {
+                font-size: 20px;
+            }
+
+            #print tr td a {
+                text-decoration: none;
+                color: #000;
+            }
+
+            .card {
+                height: 0;
+                overflow: auto;
+            }
+
+            table {
+                width: auto;
+            }
+        }
+    </style>
+
+
+<div id="print" style="display: none;"></div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fas fa-search-dollar"></i>
+        薪資條查詢
+    </div>
+    <div class="card-body">
+        <div class="alert alert-primary" role="alert">
+            <div class="row">
+                <div class="col-lg-3 col-md-4 input-group">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text str_calendar"><i class="far fa-calendar-alt"></i></span>
+                    </div>
+                    <label for="year" class="d-none">民國年</label>
+                    <input type="text" id="year" class="form-control" placeholder="請輸入民國年"
+                           value="@ViewData["Year"]">
+                </div>
+                <div class="col-lg-3 col-md-4  input-group">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text str_calendar"><i class="fas fa-key"></i></span>
+                    </div>
+                    <label for="password" class="d-none">第二密碼</label>
+                    <input type="password" id="password" class="form-control" placeholder="請輸入第二密碼"
+                           value="">
+                </div>
+                <div class="col-lg-6 col-md-4 d-flex justify-content-start">
+                    <button class="btn btn-primary mr-2">
+                        <i class="fas fa-search pr-2"></i>
+                        查詢
+                    </button>
+                    <button class="btn btn-info" data-toggle="modal" data-target="#passwordModal">
+                        <i class="fas fa-retweet pr-2"></i>
+                        變更密碼
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-6 col-md-12 pb-4">
+                <div class="card">
+                    <div class="card-header">
+                        查詢結果
+                    </div>
+                    <div class="card-body">
+                        <table id="dataTable"
+                               class="table table-hover table-striped table-bordered text-center d-none">
+                            <thead>
+                                <tr>
+                                    <th data-orderable="false">月份</th>
+                                    <th>薪資</th>
+                                    <th>獎金</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 col-md-12 pb-4">
+                <div class="card">
+                    <div class="card-header">
+                        薪資 / 獎金明細
+                    </div>
+                    <div class="card-body">
+                        <h5 id="detail-title" class="text-center d-none"></h5>
+                        <table id="detail" style="border-collapse: collapse; width: 100% !important;" border="1">
+                            <tbody>
+                            </tbody>
+                        </table>
+                        <div id="action" class="pt-4 d-none">
+                            <div class="container">
+                                <div class="row">
+                                    <button class="btn btn-primary" onclick="printTable()">
+                                        <i class="fas fa-print pr-2"></i></i>列印
+                                    </button>
+
+                                    <div class="col-lg-4 col-md-5 input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text str_calendar">
+                                                <i class="far fa-envelope"></i>
+                                            </span>
+                                        </div>
+                                        <input type="email" id="email" class="form-control" placeholder="請輸入信箱"
+                                               value="">
+                                    </div>
+                                    <button class="btn btn-primary btn-email">
+                                        <i class="fas fa-paper-plane pr-2"></i></i>送出
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modal" tabindex="-1" role="dialog" aria-labelledby="mdodal"
+     aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="description mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">確認</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- doctorModal -->
+<div class="modal fade" id="doctorModal" tabindex="-1" role="dialog" aria-labelledby="doctorModal"
+     aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="doctor">
+                    <div class="alert alert-primary doctor-header text-right" role="alert"></div>
+                    <ul class="nav nav-tabs news-flex" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="register-tab" data-toggle="tab"
+                               href="#register" title="掛號" role="tab" aria-controls="register"
+                               aria-selected="true">掛號</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="clinic-tab" data-toggle="tab"
+                               href="#clinic" title="門診" role="tab" aria-controls="clinic"
+                               aria-selected="false">門診</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="admission-tab" data-toggle="tab"
+                               href="#admission" title="住診" role="tab" aria-controls="admission"
+                               aria-selected="false">住診</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="medicine-tab" data-toggle="tab"
+                               href="#medicine" title="藥品" role="tab" aria-controls="medicine"
+                               aria-selected="false">藥品</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="note-tab" data-toggle="tab"
+                               href="#note" title="備註" role="tab" aria-controls="note"
+                               aria-selected="false">備註</a>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="register" role="tabpanel"
+                             aria-labelledby="register-tab">
+                            <div class="pt-3 px-3">
+                                <table id="registerTable"
+                                       class="table table-hover table-striped table-bordered text-center">
+                                    <thead>
+                                        <tr>
+                                            <th data-orderable="false">日期</th>
+                                            <th>病歷號碼</th>
+                                            <th>姓名</th>
+                                            <th>床號</th>
+                                            <th>科目</th>
+                                            <th>提撥</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                                <div class="doctor-register-footer text-right pt-3">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="clinic" role="tabpanel" aria-labelledby="clinic-tab">
+                            <div class="pt-3 px-3">
+                                <table id="clinicTable"
+                                       class="table table-hover table-striped table-bordered text-center">
+                                    <thead>
+                                        <tr>
+                                            <th data-orderable="false">日期</th>
+                                            <th>病歷號碼</th>
+                                            <th>姓名</th>
+                                            <th>床號</th>
+                                            <th>科目</th>
+                                            <th>提撥</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                                <div class="doctor-clinic-footer text-right pt-3">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="admission" role="tabpanel" aria-labelledby="admission-tab">
+                            <div class="pt-3 px-3">
+                                <table id="admissionTable"
+                                       class="table table-hover table-striped table-bordered text-center">
+                                    <thead>
+                                        <tr>
+                                            <th data-orderable="false">日期</th>
+                                            <th>病歷號碼</th>
+                                            <th>姓名</th>
+                                            <th>床號</th>
+                                            <th>科目</th>
+                                            <th>提撥</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                                <div class="doctor-admission-footer text-right pt-3">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="medicine" role="tabpanel" aria-labelledby="medicine-tab">
+                            <div class="pt-3 px-3">
+                                <table id="medicineTable"
+                                       class="table table-hover table-striped table-bordered text-center">
+                                    <thead>
+                                        <tr>
+                                            <th data-orderable="false">日期</th>
+                                            <th>病歷號碼</th>
+                                            <th>姓名</th>
+                                            <th>床號</th>
+                                            <th>科目</th>
+                                            <th>提撥</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                                <div class="doctor-medicine-footer text-right pt-3">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="note" role="tabpanel" aria-labelledby="note-tab">
+                            <div class="pt-3 px-3">
+                                <table id="noteTable"
+                                       class="table table-hover table-striped table-bordered text-center">
+                                    <thead>
+                                        <tr>
+                                            <th data-orderable="false">備註</th>
+                                            <th>金額</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                                <div class="doctor-note-footer text-right pt-3">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="lastClinic" class="pt-3 px-3">
+                    <div class="alert alert-primary doctor-last-clinic-header text-right" role="alert"></div>
+                    <table id="lastClinicTable"
+                           class="table table-hover table-striped table-bordered text-center">
+                        <thead>
+                            <tr>
+                                <th data-orderable="false">病歷號碼</th>
+                                <th>姓名</th>
+                                <th>執行日期</th>
+                                <th>健保代碼</th>
+                                <th>治療項目</th>
+                                <th>單價</th>
+                                <th>總量</th>
+                                <th>提成比例</th>
+                                <th>提成金額</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                    <div class="doctor-last-clinic-footer text-right pt-3">
+                    </div>
+                </div>
+                <div id="lastAdmission" class="pt-3 px-3">
+                    <div class="alert alert-primary doctor-last-admission-header text-right" role="alert"></div>
+                    <table id="lastAdmissionTable"
+                           class="table table-hover table-striped table-bordered text-center">
+                        <thead>
+                            <tr>
+                                <th data-orderable="false">病歷號碼</th>
+                                <th>姓名</th>
+                                <th>執行日期</th>
+                                <th>健保代碼</th>
+                                <th>治療項目</th>
+                                <th>單價</th>
+                                <th>總量</th>
+                                <th>提成比例</th>
+                                <th>提成金額</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                    <div class="doctor-last-admission-footer text-right pt-3">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">確認</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modal" tabindex="-1" role="dialog" aria-labelledby="mdodal"
+     aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="description mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">確認</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Password -->
+<div class="modal fade" id="passwordModal" tabindex="-1" role="dialog" aria-labelledby="passwordModal"
+     aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5><i class="fas fa-retweet pr-2"></i>變更密碼</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="">
+                <div class="modal-body">
+                    <div class="alert alert-dismissible fade show d-none" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                    <div class="form-group input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text str_calendar">舊的密碼</span>
+                        </div>
+                        <input type="password" id="old_pw" class="form-control" placeholder="請輸入4~12字" value=""
+                               minlength="4" maxlength="12" required>
+                    </div>
+
+                    <div class="form-group input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text str_calendar">新的密碼</span>
+                        </div>
+                        <input type="password" id="new_pw" class="form-control" placeholder="請輸入4~12字" value=""
+                               minlength="4" maxlength="12" required>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text str_calendar">確認密碼</span>
+                        </div>
+                        <input type="password" id="confirm_pw" class="form-control" placeholder="請輸入4~12字" value=""
+                               minlength="4" maxlength="12" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">確認</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal">關閉</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+
+@section Scripts {
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('#password').on('change', function () {
+                $('#dataTable').DataTable().clear().destroy();
+                ajax();
+            });
+            $('.btn-email').on('click', function () {
+                email();
+            });
+
+            $(document).on('click', '#dataTable td', function () {
+                var index = $(this).index();
+                var month = $(this).closest('tr').find('td:eq(0)').text();
+                var title = $('#dataTable thead tr').find('th:eq(' + index + ')').text();
+                if ($(this).has('a').length === 1) {
+                    $('#detail-title').html('<strong>' + $('#year').val() + '年' + month + '月' + title + '明細' + '</strong>')
+                }
+            });
+
+            $('form').submit(function (e) {
+                e.preventDefault();
+                if ($('#new_pw').val() === $('#confirm_pw').val()) {
+                    $.ajaxSetup({
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                        }
+                    });
+                    $.ajax({
+                        type: 'POST',
+                        url: '{{ url('薪資條查詢/ changePassword') }}',
+                        dataType: 'json',
+                        data: {
+                        id: '{{ Request::input('id') }}',
+                        old_pw: $('#old_pw').val(),
+                        new_pw: $('#new_pw').val()
+                    }
+                            }).done(function (data) {
+                        if (data === false) {
+                            $('.alert-dismissible').addClass('alert-danger').removeClass('d-none').html('<strong><i class="fas fa-times pr-2"></i></strong>舊密碼錯誤，請重新輸入。');
+                        } else {
+                            $('.alert-dismissible').addClass('alert-primary').removeClass('d-none').removeClass('alert-danger').html('<strong><i class="fas fa-check pr-2"></i></strong>密碼已更新成功！');
+                        }
+                    });
+        } else {
+            $('.alert-dismissible').addClass('alert-danger').removeClass('d-none').html('<strong><i class="fas fa-times pr-2"></i></strong>新密碼與確認密碼不符，請重新輸入。');
+        }
+                    });
+                });
+
+        var modal = $('#modal');
+        var table = $('#detail');
+        var action = $('#action');
+        var address = $('#email');
+        var detailTitle = $('#detail-title');
+        var year = $('#year').val();
+        var month = detailTitle.find('strong').text().substr(4, 2);
+        var doctorModal = $('#doctorModal');
+        var registerAmount = 0;
+
+        function ajax() {
+            if (year !== '' && $('#password').val() !== '') {
+                $('#dataTable').DataTable({
+                    'ajax': {
+                        'type': 'GET',
+                        'url': '{{ url('薪資條查詢/ salary') }}',
+                    'dataType': 'json',
+                    'data': {
+                        id: '{{ Request::input('id') }}',
+                        password: $('#password').val(),
+                        year: $('#year').val()
+                    },
+                    'dataSrc': function (data) {
+                        if (data[0]['第二密碼'] === 1) {
+                            table.find('tr').remove();
+                            action.addClass('d-none');
+                            modal.find('.modal-title').html('<i class="fas fa-exclamation-triangle text-warning pr-2"></i>提醒');
+                            modal.find('.description').html('密碼錯誤，請重新輸入。');
+                            modal.modal('show');
+                        } else {
+                            $('#dataTable').removeClass('d-none');
+
+                            return data;
+                        }
+                    }
+                },
+                    'info': false,
+                    'paging': false,
+                    'searching': false,
+                    'ordering': false,
+                    'destroy': true,
+                    'columns': [
+                    { 'data': '月份', 'class': 'align-middle' },
+                    {
+                        'data': '薪資', 'class': 'align-middle', 'render':
+                            function (data) {
+                                if (data !== '') {
+                                    return '<a href="#" onclick="salaryDetail(' + data + ');">查詢</a>';
+                                } else {
+                                    return data;
+                                }
+                            }
+                    },
+                    {
+                        'data': '獎金', 'class': 'align-middle', 'render':
+                            function (data) {
+                                if (data !== '') {
+                                    return '<a href="#" onclick="bonusDetail(' + data + ');">查詢</a>';
+                                } else {
+                                    return data;
+                                }
+                            }
+                    }
+                ],
+                        });
+        } else {
+            table.find('tr').remove();
+            action.addClass('d-none');
+            detailTitle.addClass('d-none');
+            modal.find('.modal-title').html('<i class="fas fa-exclamation-triangle text-warning pr-2"></i>提醒');
+            modal.find('.description').html('年份或第二密碼尚未輸入。');
+            modal.modal('show');
+        }
+                }
+
+        function doctor(date, text) {
+            $.ajax({
+                'type': 'GET',
+                'url': '{{ url('薪資條查詢/ doctorDetail') }}',
+                'dataType': 'json',
+                'data': { id: '{{ Request::input('id') }}', year: date },
+                success: function (data) {
+                    console.log(data);
+                    var registerJson = data[0];
+                    var clinicJson = data[2];
+                    var admissionJson = data[4];
+                    var medicineJson = data[6];
+                    var noteJson = data[8];
+                    var lastClinicJson = data[11];
+                    var lastAdmissionJson = data[13];
+                    var doctor = $('#doctor');
+                    var lastClinic = $('#lastClinic');
+                    var lastAdmission = $('#lastAdmission');
+                    $('#registerTable').DataTable({
+                        'autoWidth': true,
+                        'ordering': false,
+                        'destroy': true,
+                        'data': registerJson,
+                        'columns': [
+                            { 'data': '日期' },
+                            { 'data': '病歷號碼' },
+                            { 'data': '姓名' },
+                            { 'data': '床號' },
+                            { 'data': '科目' },
+                            { 'data': '提撥' }
+                        ],
+                    });
+                    $('#clinicTable').DataTable({
+                        'ordering': false,
+                        'destroy': true,
+                        'data': clinicJson,
+                        'columns': [
+                            { 'data': '日期' },
+                            { 'data': '病歷號碼' },
+                            { 'data': '姓名' },
+                            { 'data': '床號' },
+                            { 'data': '科目' },
+                            { 'data': '提撥' }
+                        ],
+                    });
+                    $('#admissionTable').DataTable({
+                        'ordering': false,
+                        'destroy': true,
+                        'data': admissionJson,
+                        'columns': [
+                            { 'data': '日期' },
+                            { 'data': '病歷號碼' },
+                            { 'data': '姓名' },
+                            { 'data': '床號' },
+                            { 'data': '科目' },
+                            { 'data': '提撥' }
+                        ],
+                    });
+                    $('#medicineTable').DataTable({
+                        'ordering': false,
+                        'destroy': true,
+                        'data': medicineJson,
+                        'columns': [
+                            { 'data': '日期' },
+                            { 'data': '病歷號碼' },
+                            { 'data': '姓名' },
+                            { 'data': '床號' },
+                            { 'data': '科目' },
+                            { 'data': '提撥' }
+                        ],
+                    });
+                    $('#noteTable').DataTable({
+                        'ordering': false,
+                        'destroy': true,
+                        'data': noteJson,
+                        'columns': [
+                            { 'data': '備註' },
+                            { 'data': '金額' },
+                        ],
+                    });
+                    $('#lastClinicTable').DataTable({
+                        'ordering': false,
+                        'destroy': true,
+                        'data': lastClinicJson,
+                        'columns': [
+                            { 'data': '病歷號碼' },
+                            { 'data': '姓名' },
+                            { 'data': '執行日期' },
+                            { 'data': '健保代碼' },
+                            { 'data': '治療項目' },
+                            { 'data': '單價' },
+                            { 'data': '總量' },
+                            { 'data': '提成比例' },
+                            { 'data': '提成金額' }
+                        ],
+                    });
+                    $('#lastAdmissionTable').DataTable({
+                        'ordering': false,
+                        'destroy': true,
+                        'data': lastAdmissionJson,
+                        'columns': [
+                            { 'data': '病歷號碼' },
+                            { 'data': '姓名' },
+                            { 'data': '執行日期' },
+                            { 'data': '健保代碼' },
+                            { 'data': '治療項目' },
+                            { 'data': '單價' },
+                            { 'data': '總量' },
+                            { 'data': '提成比例' },
+                            { 'data': '提成金額' }
+                        ],
+                    });
+
+                    doctorModal.find('.doctor-header').html('掛號、門診、住診、藥品及備註之總金額為：<strong class="text-danger">$' + data[10] + '</strong>');
+                    doctorModal.find('.doctor-register-footer').html('掛號提成總額：<strong class="text-danger">$' + data[1] + '</strong>');
+                    doctorModal.find('.doctor-clinic-footer').html('門診提成總額：<strong class="text-danger">$' + data[3] + '</strong>');
+                    doctorModal.find('.doctor-admission-footer').html('住診提成總額：<strong class="text-danger">$' + data[5] + '</strong>');
+                    doctorModal.find('.doctor-medicine-footer').html('藥品提成總額：<strong class="text-danger">$' + data[7] + '</strong>');
+                    doctorModal.find('.doctor-note-footer').html('備註總額：<strong class="text-danger">$' + data[9] + '</strong>');
+                    doctorModal.find('.doctor-last-clinic-header').html('上月健保門診總額：<strong class="text-danger">$' + data[12]['給付額'] + '</strong>');
+                    doctorModal.find('.doctor-last-clinic-footer').html('<div class="container"><div class="row float-right">' +
+                        '<div class="pr-2">' +
+                        '<p class="mb-0">提成總計</p>' +
+                        '<p class="mb-0">總額預扣</p>' +
+                        '<p class="mb-0">補發或核減</p>' +
+                        '<p class="mb-0">總額追扣</p>' +
+                        '<p class="mb-0"><strong class="text-danger">實發金額</strong></p>' +
+                        '</div>' +
+                        '<div>' +
+                        '<p class="mb-0">$' + data[12]['提成總計'] + '</p>' +
+                        '<p class="text-danger mb-0">(-)$' + data[12]['總額預扣'] + '</p>' +
+                        '<p class="mb-0">$' + data[12]['補發或核減'] + '</p>' +
+                        '<p class="mb-0">$' + data[12]['總額追扣'] + '</p>' +
+                        '<p class="mb-0"><strong class="text-danger">$' + data[12]['實發額'] + '</strong></p>' +
+                        '</div>' +
+                        '</div></div>');
+                    doctorModal.find('.doctor-last-admission-header').html('上月健保住診總額：<strong class="text-danger">$' + data[14]['給付額'] + '</strong>');
+                    doctorModal.find('.doctor-last-admission-footer').html('<div class="container"><div class="row float-right">' +
+                        '<div class="pr-2">' +
+                        '<p class="mb-0">提成總計</p>' +
+                        '<p class="mb-0">總額預扣</p>' +
+                        '<p class="mb-0">補發或核減</p>' +
+                        '<p class="mb-0">總額追扣</p>' +
+                        '<p class="mb-0"><strong class="text-danger">實發金額</strong></p>' +
+                        '</div>' +
+                        '<div>' +
+                        '<p class="mb-0">$' + data[14]['提成總計'] + '</p>' +
+                        '<p class="text-danger mb-0">(-)$' + data[14]['總額預扣'] + '</p>' +
+                        '<p class="mb-0">$' + data[14]['補發或核減'] + '</p>' +
+                        '<p class="mb-0">$' + data[14]['總額追扣'] + '</p>' +
+                        '<p class="mb-0"><strong class="text-danger">$' + data[14]['實發額'] + '</strong></p>' +
+                        '</div>' +
+                        '</div></div>');
+                },
+                error: function () {
+                    console.log('error'); s
+                },
+                complete: function (XMLHttpRequest, textStatus) {
+                    console.log('complete');
+                }
+
+                    });
+        doctorModal.find('.modal-title').html('<i class="fas fa-stethoscope pr-2"></i>' + text);
+        if (text === '當月自費') {
+            $('#doctor').removeClass('d-none');
+            $('#lastClinic, #lastAdmission').addClass('d-none')
+        } else if (text === '上月健保門診') {
+            $('#lastClinic').removeClass('d-none');
+            $('#doctor, #lastAdmission').addClass('d-none')
+        } else {
+            $('#lastAdmission').removeClass('d-none');
+            $('#doctor, #lastClinic').addClass('d-none')
+        }
+
+        doctorModal.modal('show');
+                }
+
+
+        function salaryDetail(year) {
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+            $.ajax({
+                type: 'GET',
+                url: '{{ url('薪資條查詢/ salaryDetail') }}',
+                dataType: 'json',
+                data: {
+                id: '{{ Request::input('id') }}',
+                password: $('#password').val(),
+                year: year
+            },
+                success: function (data) {
+                    table.find('tr').remove();
+                    table.append(
+                        '<tr>' +
+                        '<td class="text-center align-middle" colspan="2">部門：' + data[0][0]['部門'] + '</td>' +
+                        '<td class="text-center align-middle" colspan="2">代號：' + data[0][0]['代號'] + '</td>' +
+                        '<td class="text-center align-middle" colspan="2">姓名：' + data[0][0]['姓名'] + '</td>' +
+                        '<td class="text-center align-middle" colspan="2">職務：' + data[0][0]['職務'] + '</td>' +
+                        '<td class="text-center align-middle" colspan="3">製表日期：' + data[0][0]['時間'] + '</td>' +
+                        '</tr>' +
+                        '<tr>' +
+                        '<td class="text-center align-middle">加項</td>' +
+                        '<td class="text-center align-middle">金額</td>' +
+                        '<td class="text-center align-middle" colspan="2">備註</td>' +
+                        '<td class="text-center align-middle">扣項</td>' +
+                        '<td class="text-center align-middle">金額</td>' +
+                        '<td class="text-center align-middle" colspan="2">備註</td>' +
+                        '<td class="text-center align-middle" colspan="3">考勤項目</td>' +
+                        '</tr>'
+                    );
+
+                    for (i = 0; i < 6; i++) {
+                        table.append(
+                            '<tr>' +
+                            '<td class="text-left align-middle custom-border">&nbsp;&nbsp;' + data[1][i]['加項項目'] + '</td>' +
+                            '<td class="text-right align-middle custom-border">' + data[1][i]['加項'] + '&nbsp;&nbsp;</td>' +
+                            '<td class="text-left align-middle custom-border" colspan="2">&nbsp;&nbsp;' + data[1][i]['加項備註'] + '</td>' +
+                            '<td class="text-left align-middle custom-border">&nbsp;&nbsp;' + data[1][i]['扣項項目'] + '</td>' +
+                            '<td class="text-right align-middle custom-border">' + data[1][i]['扣項'] + '&nbsp;&nbsp;</td>' +
+                            '<td class="text-left align-middle custom-border" colspan="2">&nbsp;&nbsp;' + data[1][i]['扣項備註'] + '</td>' +
+                            '<td class="text-center align-middle custom-border" style="width:8%">&nbsp;&nbsp;</td>' +
+                            '<td class="text-center align-middle custom-border" style="width:8%">&nbsp;&nbsp;</td>' +
+                            '<td class="text-center align-middle custom-border" style="width:8%">&nbsp;&nbsp;</td>' +
+                            '</tr>'
+                        );
+                    }
+
+                    table.append(
+                        '<tr>' +
+                        '<td class="text-left align-middle custom-border">&nbsp;&nbsp;' + data[1][6]['加項項目'] + '</td>' +
+                        '<td class="text-right align-middle custom-border">' + data[1][6]['加項'] + '&nbsp;&nbsp;</td>' +
+                        '<td class="text-left align-middle custom-border" colspan="2">&nbsp;&nbsp;' + data[1][6]['加項備註'] + '</td>' +
+                        '<td class="text-center align-middle">加項合計</td>' +
+                        '<td class="text-right align-middle">' + data[0][0]['加項'] + '</td>' +
+                        '<td class="text-center align-middle">應稅金額</td>' +
+                        '<td class="text-right align-middle">' + data[0][0]['應稅'] + '</td>' +
+                        '<td class="text-center align-middle" colspan="2">發薪日期</td>' +
+                        '<td class="text-center align-middle">' + data[0][0]['發薪'] + '</td>' +
+                        '</tr>' +
+                        '<tr>' +
+                        '<td class="text-left align-middle custom-border">&nbsp;&nbsp;' + data[1][7]['加項項目'] + '</td>' +
+                        '<td class="text-right align-middle custom-border">' + data[1][7]['加項'] + '&nbsp;&nbsp;</td>' +
+                        '<td class="text-left align-middle custom-border" colspan="2">&nbsp;&nbsp;' + data[1][7]['加項備註'] + '</td>' +
+                        '<td class="text-center align-middle">扣項合計</td>' +
+                        '<td class="text-right align-middle">' + data[0][0]['扣項'] + '</td>' +
+                        '<td class="text-center align-middle">轉帳帳號</td>' +
+                        '<td class="text-left align-middle" colspan="4">&nbsp;&nbsp;&nbsp;' + data[0][0]['帳號'] + '</td>' +
+                        '</tr>' +
+                        '<tr>' +
+                        '<td class="text-left align-middle custom-border">&nbsp;&nbsp;' + data[1][8]['加項項目'] + '</td>' +
+                        '<td class="text-right align-middle custom-border">' + data[1][8]['加項'] + '&nbsp;&nbsp;</td>' +
+                        '<td class="text-left align-middle custom-border" colspan="2">&nbsp;&nbsp;' + data[1][8]['加項備註'] + '</td>' +
+                        '<td class="text-center align-middle">實發金額</td>' +
+                        '<td class="text-right align-middle">' + data[0][0]['實發'] + '</td>' +
+                        '<td colspan="5"></td>' +
+                        '</tr>'
+                    );
+
+                    $('#detail tr td:contains("當月自費")').html('<a href="#" onclick="doctor(' + year + month + ',' + "'當月自費'" + ');">&nbsp;&nbsp;當月自費</a>');
+                    $('#detail tr td:contains("上月健保(門)")').html('<a href="#" onclick="doctor(' + year + month + ',' + "'上月健保門診'" + ');">&nbsp;&nbsp;上月健保(門)</a>');
+                    $('#detail tr td:contains("上月健保(住)")').html('<a href="#" onclick="doctor(' + year + month + ',' + "'上月健保住診'" + ');">&nbsp;&nbsp;上月健保(住)</a>');
+
+                    action.removeClass('d-none');
+                    detailTitle.removeClass('d-none');
+                    address.val(data[0][0]['信箱']);
+                }
+                    });
+                }
+
+        function bonusDetail(year) {
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
+            $.ajax({
+                type: 'GET',
+                url: '{{ url('薪資條查詢/ bonusDetail') }}',
+                dataType: 'json',
+                data: {
+                id: '{{ Request::input('id') }}',
+                password: $('#password').val(),
+                year: year
+            },
+                success: function (data) {
+                    table.find('tr').remove();
+                    table.append(
+                        '<tr>' +
+                        '<td class="text-center align-middle" colspan="2">部門：' + data[0][0]['部門'] + '</td>' +
+                        '<td class="text-center align-middle" colspan="2">代號：' + data[0][0]['代號'] + '</td>' +
+                        '<td class="text-center align-middle" colspan="2">姓名：' + data[0][0]['姓名'] + '</td>' +
+                        '<td class="text-center align-middle" colspan="2">職務：' + data[0][0]['職務'] + '</td>' +
+                        '<td class="text-center align-middle" colspan="3">製表日期：' + data[0][0]['時間'] + '</td>' +
+                        '</tr>' +
+                        '<tr>' +
+                        '<td class="text-center align-middle">加項</td>' +
+                        '<td class="text-center align-middle">金額</td>' +
+                        '<td class="text-center align-middle" colspan="2">備註</td>' +
+                        '<td class="text-center align-middle">扣項</td>' +
+                        '<td class="text-center align-middle">金額</td>' +
+                        '<td class="text-center align-middle" colspan="2">備註</td>' +
+                        '<td class="text-center align-middle" colspan="3">考勤項目</td>' +
+                        '</tr>'
+                    );
+
+                    for (i = 0; i < 6; i++) {
+                        table.append(
+                            '<tr>' +
+                            '<td class="text-left align-middle custom-border">&nbsp;&nbsp;' + data[1][i]['加項項目'] + '</td>' +
+                            '<td class="text-right align-middle custom-border">' + data[1][i]['加項'] + '&nbsp;&nbsp;</td>' +
+                            '<td class="text-left align-middle custom-border" colspan="2"></td>' +
+                            '<td class="text-left align-middle custom-border">&nbsp;&nbsp;' + (i === 0 ? '稅額' : '') + '</td>' +
+                            '<td class="text-right align-middle custom-border">' + (i === 0 ? data[0][0]['稅額'] : '') + '&nbsp;&nbsp;</td>' +
+                            '<td class="text-left align-middle custom-border" colspan="2"></td>' +
+                            '<td class="text-center align-middle custom-border" style="width:8%">&nbsp;&nbsp;</td>' +
+                            '<td class="text-center align-middle custom-border" style="width:8%">&nbsp;&nbsp;</td>' +
+                            '<td class="text-center align-middle custom-border" style="width:8%">&nbsp;&nbsp;</td>' +
+                            '</tr>'
+                        );
+                    }
+
+                    table.append(
+                        '<tr>' +
+                        '<td class="text-left align-middle custom-border">&nbsp;&nbsp;' + data[1][6]['加項項目'] + '</td>' +
+                        '<td class="text-right align-middle custom-border">' + data[1][6]['加項'] + '&nbsp;&nbsp;</td>' +
+                        '<td class="text-left align-middle custom-border" colspan="2"></td>' +
+                        '<td class="text-center align-middle">加項合計</td>' +
+                        '<td class="text-right align-middle">' + data[0][0]['加項'] + '</td>' +
+                        '<td class="text-center align-middle">應稅金額</td>' +
+                        '<td class="text-right align-middle">' + data[0][0]['應稅'] + '</td>' +
+                        '<td class="text-center align-middle" colspan="2">發薪日期</td>' +
+                        '<td class="text-center align-middle">' + data[0][0]['發薪'] + '</td>' +
+                        '</tr>' +
+                        '<tr>' +
+                        '<td class="text-left align-middle custom-border">&nbsp;&nbsp;' + data[1][7]['加項項目'] + '</td>' +
+                        '<td class="text-right align-middle custom-border">' + data[1][7]['加項'] + '&nbsp;&nbsp;</td>' +
+                        '<td class="text-left align-middle custom-border" colspan="2"></td>' +
+                        '<td class="text-center align-middle">扣項合計</td>' +
+                        '<td class="text-right align-middle">' + data[0][0]['稅額'] + '</td>' +
+                        '<td class="text-center align-middle">轉帳帳號</td>' +
+                        '<td class="text-left align-middle" colspan="4">&nbsp;&nbsp;&nbsp;' + data[0][0]['帳號'] + '</td>' +
+                        '</tr>' +
+                        '<tr>' +
+                        '<td class="text-left align-middle custom-border">&nbsp;&nbsp;' + data[1][8]['加項項目'] + '</td>' +
+                        '<td class="text-right align-middle custom-border">' + data[1][8]['加項'] + '&nbsp;&nbsp;</td>' +
+                        '<td class="text-left align-middle custom-border" colspan="2"></td>' +
+                        '<td class="text-center align-middle">實發金額</td>' +
+                        '<td class="text-right align-middle">' + data[0][0]['實發'] + '</td>' +
+                        '<td colspan="5"></td>' +
+                        '</tr>'
+                    );
+                    action.removeClass('d-none');
+                    detailTitle.removeClass('d-none');
+                    address.val(data[0][0]['信箱'])
+                }
+                    });
+                }
+
+        function email() {
+            if (address[0].checkValidity() && address.val() !== '') {
+                modal.find('.modal-title').html('<i class="fas fa-circle-notch fa-spin text-primary pr-2"></i>請稍候');
+                modal.find('.description').html('寄信中。');
+                modal.modal('show');
+                $.ajaxSetup({
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    }
+                });
+                $.ajax({
+                    type: 'POST',
+                    url: '{{ url('薪資條查詢/ sendEmail ? id = ' . Request::input('id')) }}',
+                    dataType: 'json',
+                    data: { email: address.val(), content: table.html(), title: detailTitle.html() }
+                        }).done(function (data) {
+                        if (data[0].valid === 0) {
+                            modal.find('.modal-title').html('<i class="fas fa-exclamation-triangle text-warning pr-2"></i>寄信失敗');
+                            modal.find('.description').html('<p class="m-0">信件未寄送成功。</p>');
+                        } else {
+                            modal.find('.modal-title').html('<i class="fas fa-check text-primary pr-2"></i>寄信成功');
+                            modal.find('.description').html('<p class="m-0">已寄送至' + data[0].email + '，請確認信件。</p>');
+                        }
+                    })
+        } else {
+            modal.find('.modal-title').html('<i class="fas fa-exclamation-triangle text-warning pr-2"></i>提醒');
+            modal.find('.description').html('請重新輸入信箱，或輸入正確的格式。');
+            modal.modal('show');
+        }
+                }
+
+        function printTable() {
+            var print = $('#print');
+            print.find('table').remove();
+            print.append('<table style="border-collapse: collapse; width: 100%;" border="1"><tbody>' + table[0].innerHTML + '</tbody></table>');
+            window.print();
+        }
+
+    </script>
+
+}

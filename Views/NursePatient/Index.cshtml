@@ -1,0 +1,68 @@
+﻿@{
+    // Retrieve the nurse-patient ratios data passed from the controller
+    var nursePatientRatios = ViewData["NursePatientRatios"] as IEnumerable<dynamic>;
+
+    // Default values in case there is no data
+    var month = nursePatientRatios?.FirstOrDefault()?.month ?? string.Empty;
+    var enMonth = nursePatientRatios?.FirstOrDefault()?.en_month ?? string.Empty;
+    var ratio = nursePatientRatios?.FirstOrDefault()?.ratio ?? string.Empty;
+
+    // Retrieve the query parameter 'id'
+    var id = Context.Request.Query["id"].FirstOrDefault() ?? string.Empty;
+
+    // Set the action URL for the form (update this as per your routing setup)
+    var formActionUrl = Url.Action("nursePatient", "護病比更新") + "?id=" + id;
+}
+
+@if (TempData.ContainsKey("Message"))
+{
+    <div class="alert @TempData["AlertClass"] alert-dismissible fade show" role="alert">
+        @Html.Raw(TempData["Message"])
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-header">
+        <i class="fas fa-percent"></i>
+        護病比更新
+    </div>
+    <div class="card-body">
+        <form action="@formActionUrl" method="POST">
+
+            <div class="row">
+                <div class="col-6">
+                    <div class="form-group">
+                        <label for="month">中文月份</label>
+                        <input type="text" class="form-control" name="month" id="month" value="@month" required>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="form-group">
+                        <label for="en_month">英文月份</label>
+                        <input type="text" class="form-control" name="enMonth" id="en_month" value="@enMonth" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-6">
+                    <div class="form-group">
+                        <label for="ratio">護病比</label>
+                        <input type="text" class="form-control" name="ratio" id="ratio" value="@ratio" required>
+                    </div>
+                </div>
+            </div>
+
+            <input type="submit" class="btn btn-primary" value="送出">
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+        // JavaScript code here if needed
+    </script>
+}

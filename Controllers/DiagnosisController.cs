@@ -93,8 +93,6 @@ namespace dotnet_user.Controllers
             }
 
             return Json(new { FirstRecord = result, SecondRecord = resultSecond });
-
-        
         }
     }
 }
