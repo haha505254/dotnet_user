@@ -46,7 +46,7 @@ namespace dotnet_user.Controllers
         {
             using var connection = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));
             var user = await connection.QueryAsync("SELECT * FROM 人事資料檔 WHERE counter = @Id", new { Id = id });
-            return user.FirstOrDefault();
+            return user.FirstOrDefault() ?? new { };
         }
 
         private async Task<(int, string)> UserNo(int id)
@@ -55,7 +55,13 @@ namespace dotnet_user.Controllers
             int counter = (user.職務代碼 == 1 || user.職務代碼 == 7) && user.人事代號.Length == 3 && user.部門別 != "B71." ? 2 : 1;
             using var connection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
             var no = await connection.QueryAsync("SELECT 人員代號 FROM 人事資料檔 WHERE 身份證號 = @IdNumber AND 分公司檔_counter = @Counter", new { IdNumber = user.身份證字號, Counter = counter });
-            return (counter, no.FirstOrDefault().人員代號);
+            var firstNo = no.FirstOrDefault();
+            if (firstNo == null) 
+            {
+                return (counter, string.Empty); 
+            }
+
+            return (counter, firstNo.人員代號);
         }
 
         private async Task<List<object>> RecordSalaryAndBonus(int id, int year, string no, string password)

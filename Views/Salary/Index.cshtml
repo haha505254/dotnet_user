@@ -3,6 +3,12 @@
 *@
 @{
     var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
+    var salaryChangePasswordUrl = Url.Action("changePassword", "薪資條查詢");
+    var salaryRecordUrl = Url.Action("salary", "薪資條查詢");
+    var salaryDoctorDetailUrl = Url.Action("doctorDetail", "薪資條查詢");
+    var salaryDetailUrl = Url.Action("salaryDetail", "薪資條查詢");
+    var salaryBonusDetailUrl = Url.Action("bonusDetail", "薪資條查詢");
+    var salarySendEmailUrl = Url.Action("sendEmail", "薪資條查詢");
 }
 
     <style>
@@ -483,10 +489,10 @@
                     });
                     $.ajax({
                         type: 'POST',
-                        url: '{{ url('薪資條查詢/ changePassword') }}',
+                        url: '@salaryChangePasswordUrl',
                         dataType: 'json',
                         data: {
-                        id: '{{ Request::input('id') }}',
+                        id: '@id',
                         old_pw: $('#old_pw').val(),
                         new_pw: $('#new_pw').val()
                     }
@@ -518,10 +524,10 @@
                 $('#dataTable').DataTable({
                     'ajax': {
                         'type': 'GET',
-                        'url': '{{ url('薪資條查詢/ salary') }}',
+                        'url': '@salaryRecordUrl',
                     'dataType': 'json',
                     'data': {
-                        id: '{{ Request::input('id') }}',
+                        id: '@id',
                         password: $('#password').val(),
                         year: $('#year').val()
                     },
@@ -575,15 +581,15 @@
             modal.find('.modal-title').html('<i class="fas fa-exclamation-triangle text-warning pr-2"></i>提醒');
             modal.find('.description').html('年份或第二密碼尚未輸入。');
             modal.modal('show');
+            }
         }
-                }
 
         function doctor(date, text) {
             $.ajax({
                 'type': 'GET',
-                'url': '{{ url('薪資條查詢/ doctorDetail') }}',
+                'url': '@salaryDoctorDetailUrl',
                 'dataType': 'json',
-                'data': { id: '{{ Request::input('id') }}', year: date },
+                'data': { id: '@id', year: date },
                 success: function (data) {
                     console.log(data);
                     var registerJson = data[0];
@@ -764,10 +770,10 @@
             });
             $.ajax({
                 type: 'GET',
-                url: '{{ url('薪資條查詢/ salaryDetail') }}',
+                url: '@salaryDetailUrl',
                 dataType: 'json',
                 data: {
-                id: '{{ Request::input('id') }}',
+                id: '@id',
                 password: $('#password').val(),
                 year: year
             },
@@ -858,10 +864,10 @@
             });
             $.ajax({
                 type: 'GET',
-                url: '{{ url('薪資條查詢/ bonusDetail') }}',
+                url: '@salaryBonusDetailUrl',
                 dataType: 'json',
                 data: {
-                id: '{{ Request::input('id') }}',
+                id: '@id',
                 password: $('#password').val(),
                 year: year
             },
@@ -951,7 +957,7 @@
                 });
                 $.ajax({
                     type: 'POST',
-                    url: '{{ url('薪資條查詢/ sendEmail ? id = ' . Request::input('id')) }}',
+                    url: '@salarySendEmailUrl' + '?id=' + '@id',
                     dataType: 'json',
                     data: { email: address.val(), content: table.html(), title: detailTitle.html() }
                         }).done(function (data) {
