@@ -183,75 +183,74 @@ namespace dotnet_user.Controllers
                     }
                 }
 
-            var userInfoOutput = new
-            {
-                部門 = dept?.單位名稱,
-                代號 = user.人事代號,
-                姓名 = user.姓名,
-                職務 = job?.職務名稱,
-                時間 = DateTime.Now.ToString("yyyy-MM"),
-                加項 = debt.ToString("N0"),
-                扣項 = credit.ToString("N0"),
-                應稅 = (debt - food).ToString("N0"),
-                實發 = (debt - credit).ToString("N0"),
-                發薪 = salary.FirstOrDefault()?.發薪日期,
-                帳號 = salary.FirstOrDefault()?.轉帳帳號,
-                信箱 = user.Email帳號
-            };
-
-            // 初始化加項和扣項详情列表
-            var deptDetailsList = new List<dynamic>();
-            var creditDetailsList = new List<dynamic>();
-
-            foreach (var item in salary)
-            {
-                if (item.加扣項 == "加項")
+                var userInfoOutput = new
                 {
-                    deptDetailsList.Add(new
+                    部門 = dept?.單位名稱,
+                    代號 = user.人事代號,
+                    姓名 = user.姓名,
+                    職務 = job?.職務名稱,
+                    時間 = DateTime.Now.ToString("yyyy-MM"),
+                    加項 = debt.ToString("N0"),
+                    扣項 = credit.ToString("N0"),
+                    應稅 = (debt - food).ToString("N0"),
+                    實發 = (debt - credit).ToString("N0"),
+                    發薪 = salary.FirstOrDefault()?.發薪日期,
+                    帳號 = salary.FirstOrDefault()?.轉帳帳號,
+                    信箱 = user.Email帳號
+                };
+
+                // 初始化加項和扣項详情列表
+                var deptDetailsList = new List<dynamic>();
+                var creditDetailsList = new List<dynamic>();
+
+                foreach (var item in salary)
+                {
+                    if (item.加扣項 == "加項")
                     {
-                        加項項目 = item.薪資項目名稱,
-                        加項 = Convert.ToDecimal(item.薪資項目金額).ToString("N0"),
-                        加項備註 = item.備註
+                        deptDetailsList.Add(new
+                        {
+                            加項項目 = item.薪資項目名稱 ?? "",
+                            加項 = Convert.ToDecimal(item.薪資項目金額).ToString("N0"),
+                            加項備註 = item.備註 ?? ""
+                        });
+                    }
+                    if (item.加扣項 == "扣項")
+                    {
+                        creditDetailsList.Add(new
+                        {
+                            扣項項目 = item.薪資項目名稱 ?? "",
+                            扣項 = Convert.ToDecimal(item.薪資項目金額).ToString("N0"),
+                            扣項備註 = item.備註 ?? ""
+                        });
+                    }
+                }
+
+                // 合并加項和扣項详情到薪资详情列表
+                var salaryDetailsList = new List<dynamic>();
+                for (int i = 0; i < 9; i++)
+                {
+                    var deptItem = i < deptDetailsList.Count ? deptDetailsList[i] : new { 加項項目 = "", 加項 = "", 加項備註 = "" };
+                    var creditItem = i < creditDetailsList.Count ? creditDetailsList[i] : new { 扣項項目 = "", 扣項 = "", 扣項備註 = "" };
+
+                    salaryDetailsList.Add(new
+                    {
+                        加項項目 = deptItem.加項項目,
+                        加項 = deptItem.加項,
+                        加項備註 = deptItem.加項備註,
+                        扣項項目 = creditItem.扣項項目,
+                        扣項 = creditItem.扣項,
+                        扣項備註 = creditItem.扣項備註
                     });
                 }
-                if (item.加扣項 == "扣項")
+
+                // 整理最终输出
+                var finalOutput = new List<object>
                 {
-                    creditDetailsList.Add(new
-                    {
-                        扣項項目 = item.薪資項目名稱,
-                        扣項 = Convert.ToDecimal(item.薪資項目金額).ToString("N0"),
-                        扣項備註 = item.備註
-                    });
-                }
-            }
+                    new List<object> { userInfoOutput },
+                    salaryDetailsList
+                };
 
-            // 合并加項和扣項详情到薪资详情列表
-            var salaryDetailsList = new List<dynamic>();
-            int maxCount = Math.Max(deptDetailsList.Count, creditDetailsList.Count);
-            for (int i = 0; i < 9; i++)
-            {
-                var deptItem = i < deptDetailsList.Count ? deptDetailsList[i] : new { 加項項目 = "", 加項 = "", 加項備註 = "" };
-                var creditItem = i < creditDetailsList.Count ? creditDetailsList[i] : new { 扣項項目 = "", 扣項 = "", 扣項備註 = "" };
-
-                salaryDetailsList.Add(new
-                {
-                    加項項目 = deptItem.加項項目,
-                    加項 = deptItem.加項,
-                    加項備註 = deptItem.加項備註,
-                    扣項項目 = creditItem.扣項項目,
-                    扣項 = creditItem.扣項,
-                    扣項備註 = creditItem.扣項備註
-                });
-            }
-
-            // 整理最终输出
-            var finalOutput = new List<object>
-{
-    new List<object> { userInfoOutput },
-    salaryDetailsList
-};
-
-            return Ok(finalOutput);
+                return Ok(finalOutput);
 
         }
     }
