@@ -12,6 +12,7 @@
 }
 
     <style>
+
         .sorting_asc:before, .sorting_asc:after {
             display: none !important;
         }
@@ -130,7 +131,7 @@
                     </div>
                     <div class="card-body">
                         <h5 id="detail-title" class="text-center d-none"></h5>
-                        <table id="detail" style="border-collapse: collapse; width: 100% !important;" border="1">
+                        <table id="detail"  style="border-collapse: collapse; width: 100% !important;" border="1">
                             <tbody>
                             </tbody>
                         </table>
@@ -462,6 +463,13 @@
 @section Scripts {
     <script type="text/javascript">
         $(document).ready(function () {
+
+            $('th').css({
+                'border-color': 'initial',
+                'border-style': 'none',
+                'border-width': 'initial'
+            });
+
             $('#password').on('change', function () {
                 $('#dataTable').DataTable().clear().destroy();
                 ajax();
