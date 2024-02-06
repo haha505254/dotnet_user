@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using System.Linq;
 using System;
 using System.Globalization;
+using Azure.Core;
+using System.Text;
 
 namespace dotnet_user.Controllers
 {
@@ -252,6 +254,95 @@ namespace dotnet_user.Controllers
 
                 return Ok(finalOutput);
 
+        }
+
+
+        [HttpGet("bonusDetail")]
+        public async Task<IActionResult> BonusDetail(int id, int year)
+        {
+            var user = await UserInfo(id);
+            if (user == null)
+            {
+                return NotFound("User not found.");
+            }
+
+            string connectionStringTgsql = _configuration.GetConnectionString("TgsqlConnection");
+            string connectionStringCountry = _configuration.GetConnectionString("CountryConnection");
+
+            // 取得部門信息
+            using var tgsqlConn = new SqlConnection(connectionStringTgsql);
+            var deptQuery = "SELECT 單位名稱 FROM 病歷單位代號檔 WHERE 單位代號 = @部門別";
+            var dept = await tgsqlConn.QueryFirstOrDefaultAsync<dynamic>(deptQuery, new { 部門別 = user.部門別 });
+
+            // 取得職務信息
+            using var countryConn = new SqlConnection(connectionStringCountry);
+            var jobQuery = @"
+                SELECT TOP 1 職務名稱, 人員代號, 轉帳帳號, 到職日
+                FROM 人事資料檔
+                WHERE 身份證號 = @身份證字號 AND 離職日 = '' AND (職務名稱 IS NOT NULL AND 職務名稱 != '')
+                GROUP BY 職務名稱, 人員代號, 轉帳帳號, 到職日
+                ORDER BY 到職日 DESC";
+            var job = await countryConn.QueryFirstOrDefaultAsync<dynamic>(jobQuery, new { 身份證字號 = user.身份證字號 });
+
+            if (job == null)
+            {
+                return NotFound("Job information not found.");
+            }
+
+            // 根据职务代码调整查询以适应分公司檔_counter的条件
+            string bonusQuery;
+            object queryParameters;
+            if (user.職務代碼 == 1 || user.職務代碼 == 7)
+            {
+                bonusQuery = @"
+            SELECT * FROM 獎金發放結果檔
+            WHERE 人員代號 = @人員代號 AND 獎金年月 = @年 AND 分公司檔_counter = 2";
+                queryParameters = new { 人員代號 = job.人員代號, 年 = year };
+            }
+            else
+            {
+                bonusQuery = @"
+            SELECT * FROM 獎金發放結果檔
+            WHERE 人員代號 = @人員代號 AND 獎金年月 = @年";
+                queryParameters = new { 人員代號 = job.人員代號, 年 = year };
+            }
+
+            var bonuses = await countryConn.QueryAsync<dynamic>(bonusQuery, queryParameters);
+
+
+            var debt = bonuses.Sum(b => (decimal)b.實發金額);
+            var tax = bonuses.Sum(b => (decimal)b.稅額);
+
+            var userInfo = new
+            {
+                部門 = dept.單位名稱,
+                代號 = user.人事代號,
+                姓名 = user.姓名,
+                職務 = job.職務名稱,
+                時間 = DateTime.Now.ToString("yyyy-MM"),
+                加項 = string.Format("{0:n0}", debt),
+                應稅 = string.Format("{0:n0}", debt),
+                稅額 = string.Format("{0:n0}", tax),
+                實發 = string.Format("{0:n0}", debt - tax),
+                發薪 = bonuses.Max(b => b.獎金年月),
+                帳號 = job.轉帳帳號,
+                信箱 = user.Email帳號
+            };
+
+            // 收集实际的奖金详情
+            var actualDetails = bonuses.Select(b => (dynamic)new
+            {
+                加項項目 = b.獎金項目名稱,
+                加項 = string.Format("{0:n0}", b.實發金額)
+            }).ToList();
+            // 确保 detailsList 至少有9个元素
+            while (actualDetails.Count < 9)
+            {
+                actualDetails.Add(new { 加項項目 = "", 加項 = "" });
+            }
+            // 构建最终返回的结果
+            var result = new object[] { new[] { userInfo }, actualDetails.ToArray() };
+            return Ok(result);
         }
     }
 }
