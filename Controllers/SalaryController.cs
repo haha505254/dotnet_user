@@ -10,6 +10,8 @@ using System;
 using System.Globalization;
 using Azure.Core;
 using System.Text;
+using Microsoft.Win32;
+using Microsoft.AspNetCore.Http;
 
 namespace dotnet_user.Controllers
 {
@@ -33,17 +35,6 @@ namespace dotnet_user.Controllers
             return View();
         }
 
-
-        [HttpGet("salary")]
-        public async Task<IActionResult> Record(int id, string password, int year)
-        {
-            var userInfo = await UserInfo(id);
-            var userNo = await UserNo(id);
-            var results = await RecordSalaryAndBonus(id, year, userNo.Item2, password);
-
-            return Ok(results);
-        }
-
         private async Task<dynamic> UserInfo(int id)
         {
             using var tgsqlconnection = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));
@@ -58,17 +49,27 @@ namespace dotnet_user.Controllers
             using var connection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
             var no = await connection.QueryAsync("SELECT 人員代號 FROM 人事資料檔 WHERE 身份證號 = @IdNumber AND 分公司檔_counter = @Counter", new { IdNumber = user.身份證字號, Counter = counter });
             var firstNo = no.FirstOrDefault();
-            if (firstNo == null) 
+            if (firstNo == null)
             {
-                return (counter, string.Empty); 
+                return (counter, string.Empty);
             }
 
             return (counter, firstNo.人員代號);
         }
 
-        private async Task<List<object>> RecordSalaryAndBonus(int id, int year, string no, string password)
+        [HttpGet("salary")]
+        public async Task<IActionResult> Record(int id, string password, int year)
+        {
+            var results = await RecordSalaryAndBonus(id, year, password);
+
+            return Ok(results);
+        }
+
+
+        private async Task<List<object>> RecordSalaryAndBonus(int id, int year, string password)
         {
             var user = await UserInfo(id);
+            var userNo = await UserNo(id);
             using var connection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
             var passwordQuery = "SELECT 姓名, 身份證號, 第二密碼 FROM 人事資料檔 WHERE (第二密碼 IS NOT NULL OR 第二密碼 != '') AND LEN(身份證號) = 10 AND 身份證號 = @IdNumber AND 第二密碼 = @Password";
             var passwordResult = await connection.QueryAsync(passwordQuery, new { IdNumber = user.身份證字號, Password = password });
@@ -77,8 +78,8 @@ namespace dotnet_user.Controllers
 
             if (passwordResult.Any())
             {
-                var salary = await connection.QueryAsync($"EXEC [dbo].[proc_查個人薪資發放年月]'{year}', '{no}'");
-                var bonus = await connection.QueryAsync($"EXEC [dbo].[proc_查個人獎金發放年月]'{year}', '{no}'");
+                var salary = await connection.QueryAsync($"EXEC [dbo].[proc_查個人薪資發放年月]'{year}', '{userNo.Item2}'");
+                var bonus = await connection.QueryAsync($"EXEC [dbo].[proc_查個人獎金發放年月]'{year}', '{userNo.Item2}'");
 
                 for (int i = 1; i <= 12; i++)
                 {
@@ -343,6 +344,61 @@ namespace dotnet_user.Controllers
             // 构建最终返回的结果
             var result = new object[] { new[] { userInfo }, actualDetails.ToArray() };
             return Ok(result);
+        }
+
+
+        [HttpGet("doctorDetail")]
+        public async Task<IActionResult> DoctorDetail(int id, int year)
+        {
+            var userNoResult = await UserNo(id);
+            var userNo = userNoResult.Item2;
+            if (string.IsNullOrEmpty(userNo))
+            {
+                return NotFound("UserNo not found.");
+            }
+
+            var lastYear = year / 100 + 1911;
+            var lastMonth = year % 100;
+            // 直接在这里处理年份和月份，确保它们以字符串的形式被传入
+            var lastMonthDate = new DateTime(lastYear, lastMonth, 1).AddMonths(-1).ToString("yyyyMM");
+
+            string connectionCountryString = _configuration.GetConnectionString("CountryConnection");
+            IEnumerable<dynamic> results;
+
+            using (var connection = new SqlConnection(connectionCountryString))
+            {
+                await connection.OpenAsync();
+                var query = @"
+                    SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, a.提成金額 as 提撥
+                    FROM [country].[dbo].[醫師提成內容檔] as a
+                    JOIN [hpserver].[tgsql].[dbo].[病患檔] as b ON a.病患檔_counter = b.counter
+                    WHERE a.主檔_counter IN (
+                        SELECT counter FROM [country].[dbo].[醫師提成主檔] WHERE 人事代號 = @UserNo AND 提成區間_起 LIKE @Year + '%' AND 提成項目 = '當月自費-掛'
+                    )
+                    ORDER BY a.就診日";
+                // 保证 Year 参数以字符串的形式传入
+                results = await connection.QueryAsync<dynamic>(query, new { UserNo = 391, Year = lastMonthDate });
+            }
+
+            return Ok(results);
+        }
+
+        private string HideNumber(string number)
+        {
+            if (string.IsNullOrEmpty(number)) return number;
+            var firstStr = number.Substring(0, 2);
+            var lastStr = number.Length > 1 ? number.Substring(number.Length - 1) : "";
+            var masked = firstStr + new string('*', Math.Max(0, number.Length - 3)) + lastStr;
+            return masked;
+        }
+
+        private string HideString(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+            var firstChar = name.Substring(0, 1);
+            var lastChar = name.Length > 1 ? name.Substring(name.Length - 1) : "";
+            var masked = firstChar + new string('*', Math.Max(0, name.Length - 2)) + lastChar;
+            return masked;
         }
     }
 }
