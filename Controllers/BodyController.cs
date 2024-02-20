@@ -69,6 +69,7 @@ namespace dotnet_user.Controllers
 
 
             using var connection = new SqlConnection(connectionStringTgsql);
+
             var idResult = await connection.QueryFirstOrDefaultAsync<string>(
                 "SELECT 身份證字號 FROM 人事資料檔 WHERE counter = @Id",
                 new { Id = id });

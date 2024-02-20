@@ -12,6 +12,9 @@ using Azure.Core;
 using System.Text;
 using Microsoft.Win32;
 using Microsoft.AspNetCore.Http;
+using static Azure.Core.HttpHeader;
+using System.Diagnostics.Metrics;
+using Newtonsoft.Json;
 
 namespace dotnet_user.Controllers
 {
@@ -47,7 +50,7 @@ namespace dotnet_user.Controllers
             var user = await UserInfo(id);
             int counter = (user.職務代碼 == 1 || user.職務代碼 == 7) && user.人事代號.Length == 3 && user.部門別 != "B71." ? 2 : 1;
             using var connection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
-            var no = await connection.QueryAsync("SELECT 人員代號 FROM 人事資料檔 WHERE 身份證號 = @IdNumber AND 分公司檔_counter = @Counter", new { IdNumber = user.身份證字號, Counter = counter });
+            var no = await connection.QueryAsync("SELECT 人員代號 FROM 人事資料檔 WHERE 身份證號 = @IdNumber AND 分公司檔_counter = @Counter GROUP BY 人員代號, 到職日 ORDER BY 到職日 DESC", new { IdNumber = user.身份證字號, Counter = counter });
             var firstNo = no.FirstOrDefault();
             if (firstNo == null)
             {
@@ -117,143 +120,143 @@ namespace dotnet_user.Controllers
         public async Task<IActionResult> SalaryDetail(int id, int year)
         {
 
-                var user = await UserInfo(id);
-                if (user == null)
-                {
-                    return NotFound("User not found.");
-                }
+            var user = await UserInfo(id);
+            if (user == null)
+            {
+                return NotFound("User not found.");
+            }
 
-                string connectionStringTgsql = _configuration.GetConnectionString("TgsqlConnection");
-                string connectionStringCountry = _configuration.GetConnectionString("CountryConnection");
+            string connectionStringTgsql = _configuration.GetConnectionString("TgsqlConnection");
+            string connectionStringCountry = _configuration.GetConnectionString("CountryConnection");
 
-                // 取得部門信息
-                using var tgsqlConn = new SqlConnection(connectionStringTgsql);
-                var deptQuery = "SELECT 單位名稱 FROM 病歷單位代號檔 WHERE 單位代號 = @部門別";
-                var dept = await tgsqlConn.QueryFirstOrDefaultAsync<dynamic>(deptQuery, new { 部門別 = user.部門別 });
+            // 取得部門信息
+            using var tgsqlConn = new SqlConnection(connectionStringTgsql);
+            var deptQuery = "SELECT 單位名稱 FROM 病歷單位代號檔 WHERE 單位代號 = @部門別";
+            var dept = await tgsqlConn.QueryFirstOrDefaultAsync<dynamic>(deptQuery, new { 部門別 = user.部門別 });
 
-                // 取得職務信息
-                using var countryConn = new SqlConnection(connectionStringCountry);
-                var jobQuery = @"
+            // 取得職務信息
+            using var countryConn = new SqlConnection(connectionStringCountry);
+            var jobQuery = @"
                     SELECT 職務名稱 
                     FROM 人事資料檔 
                     WHERE 身份證號 = @身份證字號 
                         AND 離職日 = '' 
                         AND (職務名稱 IS NOT NULL OR 職務名稱 != '') 
                     GROUP BY 職務名稱";
-                var job = await countryConn.QueryFirstOrDefaultAsync<dynamic>(jobQuery, new { 身份證字號 = user.身份證字號 });
+            var job = await countryConn.QueryFirstOrDefaultAsync<dynamic>(jobQuery, new { 身份證字號 = user.身份證字號 });
 
-                // 取得用戶編號
-                var (counter, personnelNumber) = await UserNo(id);
-                if (string.IsNullOrEmpty(personnelNumber))
+            // 取得用戶編號
+            var (counter, personnelNumber) = await UserNo(id);
+            if (string.IsNullOrEmpty(personnelNumber))
+            {
+                return NotFound("Personnel number not found.");
+            }
+
+            // 執行存儲過程獲取薪資資訊
+            var salaryQuery = "EXEC [dbo].[proc_薪資發放結果] @Counter, @Year, @PersonnelNumber";
+            var salary = (await countryConn.QueryAsync<dynamic>(salaryQuery, new { Counter = counter, Year = year, PersonnelNumber = personnelNumber })).ToList();
+
+            // 計算加扣項
+            decimal debt = 0, credit = 0, food = 0;
+            foreach (var item in salary)
+            {
+                switch (item.加扣項)
                 {
-                    return NotFound("Personnel number not found.");
+                    case "加項":
+                        debt += Convert.ToDecimal(item.薪資項目金額);
+                        break;
+                    case "扣項":
+                        credit += Convert.ToDecimal(item.薪資項目金額);
+                        break;
                 }
 
-                // 執行存儲過程獲取薪資資訊
-                var salaryQuery = "EXEC [dbo].[proc_薪資發放結果] @Counter, @Year, @PersonnelNumber";
-                var salary = (await countryConn.QueryAsync<dynamic>(salaryQuery, new { Counter = counter, Year = year, PersonnelNumber = personnelNumber })).ToList();
+                var bonusTypes = new[] { "伙食費", "不休假獎金", "其他(免)", "國定假日加班費", "例假日加班費", "休假日加班費", "加班費" };
+                var itemName = item.薪資項目名稱.ToString();
+                bool isBonusType = false;
 
-                // 計算加扣項
-                decimal debt = 0, credit = 0, food = 0;
-                foreach (var item in salary)
+                foreach (var type in bonusTypes)
                 {
-                    switch (item.加扣項)
+                    if (itemName == type)
                     {
-                        case "加項":
-                            debt += Convert.ToDecimal(item.薪資項目金額);
-                            break;
-                        case "扣項":
-                            credit += Convert.ToDecimal(item.薪資項目金額);
-                            break;
-                    }
-
-                    var bonusTypes = new[] { "伙食費", "不休假獎金", "其他(免)", "國定假日加班費", "例假日加班費", "休假日加班費", "加班費" };
-                    var itemName = item.薪資項目名稱.ToString();
-                    bool isBonusType = false;
-
-                    foreach (var type in bonusTypes)
-                    {
-                        if (itemName == type)
-                        {
-                            isBonusType = true;
-                            break;
-                        }
-                    }
-
-                    if (isBonusType)
-                    {
-                        food += Convert.ToDecimal(item.薪資項目金額);
+                        isBonusType = true;
+                        break;
                     }
                 }
 
-                var userInfoOutput = new
+                if (isBonusType)
                 {
-                    部門 = dept?.單位名稱,
-                    代號 = user.人事代號,
-                    姓名 = user.姓名,
-                    職務 = job?.職務名稱,
-                    時間 = DateTime.Now.ToString("yyyy-MM"),
-                    加項 = debt.ToString("N0"),
-                    扣項 = credit.ToString("N0"),
-                    應稅 = (debt - food).ToString("N0"),
-                    實發 = (debt - credit).ToString("N0"),
-                    發薪 = salary.FirstOrDefault()?.發薪日期,
-                    帳號 = salary.FirstOrDefault()?.轉帳帳號,
-                    信箱 = user.Email帳號
-                };
-
-                // 初始化加項和扣項详情列表
-                var deptDetailsList = new List<dynamic>();
-                var creditDetailsList = new List<dynamic>();
-
-                foreach (var item in salary)
-                {
-                    if (item.加扣項 == "加項")
-                    {
-                        deptDetailsList.Add(new
-                        {
-                            加項項目 = item.薪資項目名稱 ?? "",
-                            加項 = Convert.ToDecimal(item.薪資項目金額).ToString("N0"),
-                            加項備註 = item.備註 ?? ""
-                        });
-                    }
-                    if (item.加扣項 == "扣項")
-                    {
-                        creditDetailsList.Add(new
-                        {
-                            扣項項目 = item.薪資項目名稱 ?? "",
-                            扣項 = Convert.ToDecimal(item.薪資項目金額).ToString("N0"),
-                            扣項備註 = item.備註 ?? ""
-                        });
-                    }
+                    food += Convert.ToDecimal(item.薪資項目金額);
                 }
+            }
 
-                // 合并加項和扣項详情到薪资详情列表
-                var salaryDetailsList = new List<dynamic>();
-                for (int i = 0; i < 9; i++)
+            var userInfoOutput = new
+            {
+                部門 = dept?.單位名稱,
+                代號 = user.人事代號,
+                姓名 = user.姓名,
+                職務 = job?.職務名稱,
+                時間 = DateTime.Now.ToString("yyyy-MM"),
+                加項 = debt.ToString("N0"),
+                扣項 = credit.ToString("N0"),
+                應稅 = (debt - food).ToString("N0"),
+                實發 = (debt - credit).ToString("N0"),
+                發薪 = salary.FirstOrDefault()?.發薪日期,
+                帳號 = salary.FirstOrDefault()?.轉帳帳號,
+                信箱 = user.Email帳號
+            };
+
+            // 初始化加項和扣項详情列表
+            var deptDetailsList = new List<dynamic>();
+            var creditDetailsList = new List<dynamic>();
+
+            foreach (var item in salary)
+            {
+                if (item.加扣項 == "加項")
                 {
-                    var deptItem = i < deptDetailsList.Count ? deptDetailsList[i] : new { 加項項目 = "", 加項 = "", 加項備註 = "" };
-                    var creditItem = i < creditDetailsList.Count ? creditDetailsList[i] : new { 扣項項目 = "", 扣項 = "", 扣項備註 = "" };
-
-                    salaryDetailsList.Add(new
+                    deptDetailsList.Add(new
                     {
-                        加項項目 = deptItem.加項項目,
-                        加項 = deptItem.加項,
-                        加項備註 = deptItem.加項備註,
-                        扣項項目 = creditItem.扣項項目,
-                        扣項 = creditItem.扣項,
-                        扣項備註 = creditItem.扣項備註
+                        加項項目 = item.薪資項目名稱 ?? "",
+                        加項 = Convert.ToDecimal(item.薪資項目金額).ToString("N0"),
+                        加項備註 = item.備註 ?? ""
                     });
                 }
+                if (item.加扣項 == "扣項")
+                {
+                    creditDetailsList.Add(new
+                    {
+                        扣項項目 = item.薪資項目名稱 ?? "",
+                        扣項 = Convert.ToDecimal(item.薪資項目金額).ToString("N0"),
+                        扣項備註 = item.備註 ?? ""
+                    });
+                }
+            }
 
-                // 整理最终输出
-                var finalOutput = new List<object>
+            // 合并加項和扣項详情到薪资详情列表
+            var salaryDetailsList = new List<dynamic>();
+            for (int i = 0; i < 9; i++)
+            {
+                var deptItem = i < deptDetailsList.Count ? deptDetailsList[i] : new { 加項項目 = "", 加項 = "", 加項備註 = "" };
+                var creditItem = i < creditDetailsList.Count ? creditDetailsList[i] : new { 扣項項目 = "", 扣項 = "", 扣項備註 = "" };
+
+                salaryDetailsList.Add(new
+                {
+                    加項項目 = deptItem.加項項目,
+                    加項 = deptItem.加項,
+                    加項備註 = deptItem.加項備註,
+                    扣項項目 = creditItem.扣項項目,
+                    扣項 = creditItem.扣項,
+                    扣項備註 = creditItem.扣項備註
+                });
+            }
+
+            // 整理最终输出
+            var finalOutput = new List<object>
                 {
                     new List<object> { userInfoOutput },
                     salaryDetailsList
                 };
 
-                return Ok(finalOutput);
+            return Ok(finalOutput);
 
         }
 
@@ -362,8 +365,21 @@ namespace dotnet_user.Controllers
             // 直接在这里处理年份和月份，确保它们以字符串的形式被传入
             var lastMonthDate = new DateTime(lastYear, lastMonth, 1).AddMonths(-1).ToString("yyyyMM");
 
+            decimal registerAmount = 0;
+            decimal clinicAmount = 0;
+            decimal admissionAmount = 0;
+            decimal medicineAmount = 0;
+            decimal noteAmount = 0;
+            decimal ownTotal = 0;
+
+            var register = new List<dynamic>();
+            var clinic = new List<dynamic>();
+            var admission = new List<dynamic>();
+            var medicine = new List<dynamic>();
+            var note = new List<dynamic>();
+
             string connectionCountryString = _configuration.GetConnectionString("CountryConnection");
-            IEnumerable<dynamic> results;
+            IEnumerable<dynamic> registers;
 
             using (var connection = new SqlConnection(connectionCountryString))
             {
@@ -376,13 +392,254 @@ namespace dotnet_user.Controllers
                         SELECT counter FROM [country].[dbo].[醫師提成主檔] WHERE 人事代號 = @UserNo AND 提成區間_起 LIKE @Year + '%' AND 提成項目 = '當月自費-掛'
                     )
                     ORDER BY a.就診日";
-                // 保证 Year 参数以字符串的形式传入
-                results = await connection.QueryAsync<dynamic>(query, new { UserNo = 391, Year = lastMonthDate });
+                registers = await connection.QueryAsync<dynamic>(query, new { UserNo = userNo, Year = year.ToString() });
             }
 
-            return Ok(results);
-        }
+            foreach (var value in registers)
+            {
+                register.Add(new
+                {
+                    日期 = value.日期,
+                    病歷號碼 = HideNumber(value.病歷號碼),
+                    姓名 = HideString(value.姓名),
+                    床號 = value.床號,
+                    科目 = value.科目,
+                    提撥 = value.提撥
+                });
 
+                registerAmount += Convert.ToDecimal(value.提撥);
+            }
+
+            IEnumerable<dynamic> clinics;
+
+            using (var connection = new SqlConnection(connectionCountryString))
+            {
+                await connection.OpenAsync();
+                var query = @"
+                    SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, a.提成金額 as 提撥
+                    FROM [country].[dbo].[醫師提成內容檔] as a
+                    JOIN [hpserver].[tgsql].[dbo].[病患檔] as b ON a.病患檔_counter = b.counter
+                    WHERE a.主檔_counter IN (
+                        SELECT counter FROM [country].[dbo].[醫師提成主檔] WHERE 人事代號 = @UserNo AND 提成區間_起 LIKE @Year + '%' AND 提成項目 = '當月自費-門'
+                    )
+                    ORDER BY a.就診日";
+                clinics = await connection.QueryAsync<dynamic>(query, new { UserNo = userNo, Year = year.ToString() });
+            }
+
+
+            foreach (var value in clinics)
+            {
+                register.Add(new
+                {
+                    日期 = value.日期,
+                    病歷號碼 = HideNumber(value.病歷號碼),
+                    姓名 = HideString(value.姓名),
+                    床號 = value.床號,
+                    科目 = value.科目,
+                    提撥 = value.提撥
+                });
+
+                clinicAmount += Convert.ToDecimal(value.提撥);
+            }
+
+
+            IEnumerable<dynamic> admissions;
+
+            using (var connection = new SqlConnection(connectionCountryString))
+            {
+                await connection.OpenAsync();
+                var query = @"
+                    SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, a.提成金額 as 提撥
+                    FROM [country].[dbo].[醫師提成內容檔] as a
+                    JOIN [hpserver].[tgsql].[dbo].[病患檔] as b ON a.病患檔_counter = b.counter
+                    WHERE a.主檔_counter IN (
+                        SELECT counter FROM [country].[dbo].[醫師提成主檔] WHERE 人事代號 = @UserNo AND 提成區間_起 LIKE @Year + '%' AND 提成項目 = '當月自費-住'
+                    )
+                    ORDER BY a.就診日";
+                admissions = await connection.QueryAsync<dynamic>(query, new { UserNo = userNo, Year = year.ToString() });
+            }
+
+
+            foreach (var value in admissions)
+            {
+                register.Add(new
+                {
+                    日期 = value.日期,
+                    病歷號碼 = HideNumber(value.病歷號碼),
+                    姓名 = HideString(value.姓名),
+                    床號 = value.床號,
+                    科目 = value.科目,
+                    提撥 = value.提撥
+                });
+
+                admissionAmount += Convert.ToDecimal( value.提撥);
+            }
+
+
+            IEnumerable<dynamic> medicines;
+
+            using (var connection = new SqlConnection(connectionCountryString))
+            {
+                await connection.OpenAsync();
+                var query = @"
+                    SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, a.提成金額 as 提撥
+                    FROM [country].[dbo].[醫師提成內容檔] as a
+                    JOIN [hpserver].[tgsql].[dbo].[病患檔] as b ON a.病患檔_counter = b.counter
+                    WHERE a.主檔_counter IN (
+                        SELECT counter FROM [country].[dbo].[醫師提成主檔] WHERE 人事代號 = @UserNo AND 提成區間_起 LIKE @Year + '%' AND 提成項目 = '當月自費-藥工費'
+                    )
+                    ORDER BY a.就診日";
+                medicines = await connection.QueryAsync<dynamic>(query, new { UserNo = userNo, Year = year.ToString() });
+            }
+
+            IEnumerable<dynamic> counter;
+
+            using (var connection = new SqlConnection(connectionCountryString))
+            {
+                await connection.OpenAsync();
+                var query = @"
+                    SELECT counter
+                    FROM 人事資料檔
+                    WHERE 人員代號 = @UserNo AND 分公司檔_counter = 2
+                    GROUP BY counter";
+                counter = await connection.QueryAsync<dynamic>(query, new { UserNo = userNo });
+            }
+
+            IEnumerable<dynamic> notes;
+
+            using (var connection = new SqlConnection(connectionCountryString))
+            {
+                await connection.OpenAsync();
+                var query = @"
+                    SELECT 備註, 異動金額
+                    FROM 人事薪資異動檔
+                    WHERE 人事檔_counter = @UserNo AND 異動年月 = @Year AND 項目名稱 = '當月自費' AND 備註 != ''
+                    ";
+                notes = await connection.QueryAsync<dynamic>(query, new { UserNo = counter.FirstOrDefault().counter, Year = year.ToString() });
+            }
+
+
+
+
+            foreach (var value in notes)
+            {
+                // 假设 value 是一个具有備註和異動金額属性的动态类型
+                note.Add(new
+                {
+                    備註 = value.備註,
+                    金額 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", value.異動金額) // 使用InvariantCulture确保格式化的一致性
+                });
+
+                noteAmount += value.異動金額;
+            }
+
+            ownTotal = registerAmount + clinicAmount + admissionAmount + medicineAmount + noteAmount;
+
+            IEnumerable<dynamic> lastClinics;
+
+            // 将 year 转换为字符串以便使用 Substring 方法
+            string yearStr = lastMonthDate.ToString();
+
+            // 现在 yearStr 是 "202301"，可以使用 Substring
+            var lastYearInt = Convert.ToInt32(yearStr.Substring(0, 4)) - 1911;
+            var lastMonthStr = yearStr.Substring(4, 2);
+
+            // 如果需要，将 lastYearInt 转换回字符串以进行进一步格式化
+            var formattedLastMonth = $"{lastYearInt}{lastMonthStr}";
+
+            using (var connection = new SqlConnection(connectionCountryString))
+            {
+                await connection.OpenAsync();
+                var query = @"
+                SELECT b.病歷號碼, b.姓名, b.執行日期, b.健保代碼, b.項目名稱 as 治療項目, b.單價, b.總量, b.提成比例, b.提成金額
+                FROM 健保醫師提成主檔 as a
+                JOIN 健保醫師提成內容檔 as b ON a.counter = b.主檔_counter
+                WHERE a.醫師代號 = @UserNo AND a.提成年月 = @FormattedLastMonth AND a.門住診別 = '門'";
+
+                lastClinics = await connection.QueryAsync<dynamic>(query, new { UserNo = userNo, FormattedLastMonth = formattedLastMonth });
+            }
+
+            IEnumerable<dynamic> lastClinicsAmount;
+
+            using (var connection = new SqlConnection(connectionCountryString))
+            {
+                await connection.OpenAsync();
+                var query = @"
+                SELECT 提成總計, 總額預扣, 補發或核減, 給付額, 總額追扣, 實發額
+                FROM 健保醫師提成主檔
+                WHERE 醫師代號 = @UserNo AND 提成年月 = @FormattedLastMonth AND 門住診別 = '門'";
+                lastClinicsAmount = await connection.QueryAsync<dynamic>(query, new { UserNo = userNo, FormattedLastMonth = formattedLastMonth });
+            }
+
+
+
+
+            // 格式化查询结果
+            if (lastClinicsAmount != null)
+            {
+                lastClinicsAmount.Select(x => new
+                {
+                    提成總計 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.提成總計),
+                    總額預扣 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.總額預扣),
+                    補發或核減 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.補發或核減),
+                    給付額 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.給付額),
+                    總額追扣 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.總額追扣),
+                    實發額 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.實發額)
+                }).FirstOrDefault();
+            }
+
+
+            IEnumerable<dynamic> lastAdmission;
+
+
+            using (var connection = new SqlConnection(connectionCountryString))
+            {
+                await connection.OpenAsync();
+                var query = @"
+                SELECT b.病歷號碼, b.姓名, b.執行日期, b.健保代碼, b.項目名稱 as 治療項目, b.單價, b.總量, b.提成比例, b.提成金額
+                FROM 健保醫師提成主檔 as a
+                JOIN 健保醫師提成內容檔 as b ON a.counter = b.主檔_counter
+                WHERE a.醫師代號 = @UserNo AND a.提成年月 = @FormattedLastMonth AND a.門住診別 = '住'";
+
+                lastAdmission = await connection.QueryAsync<dynamic>(query, new { UserNo = userNo, FormattedLastMonth = formattedLastMonth });
+            }
+
+
+            // 使用 ADO.NET 而不是 Laravel Eloquent
+            List<dynamic> lastAdmissionAmount;
+            using (var connection = new SqlConnection(connectionCountryString))
+            {
+                await connection.OpenAsync();
+                var query = @"
+            SELECT 提成總計, 總額預扣, 補發或核減, 給付額, 總額追扣, 實發額
+            FROM 健保醫師提成主檔
+            WHERE 醫師代號 = @No AND 提成年月 = @FormattedLastMonth AND 門住診別 = '住'";
+
+                
+
+                lastAdmissionAmount = (await connection.QueryAsync<dynamic>(query, new { No = userNo, FormattedLastMonth = formattedLastMonth })).ToList();
+            }
+
+            // 資料格式化
+            var formattedLastAdmissionAmount = lastAdmissionAmount.Select(a => new
+            {
+                提成總計 = string.Format("{0:N0}", a.提成總計),
+                總額預扣 = string.Format("{0:N0}", a.總額預扣),
+                補發或核減 = string.Format("{0:N0}", a.補發或核減),
+                給付額 = string.Format("{0:N0}", a.給付額),
+                總額追扣 = string.Format("{0:N0}", a.總額追扣),
+                實發額 = string.Format("{0:N0}", a.實發額)
+            });
+
+            // 整合最終輸出的資料
+            var finalResult = new
+            {
+                LastAdmission = lastAdmission,
+                LastAdmissionAmount = formattedLastAdmissionAmount
+            };
+
+            return Ok(finalResult);
+        }
         private string HideNumber(string number)
         {
             if (string.IsNullOrEmpty(number)) return number;
@@ -391,7 +648,6 @@ namespace dotnet_user.Controllers
             var masked = firstStr + new string('*', Math.Max(0, number.Length - 3)) + lastStr;
             return masked;
         }
-
         private string HideString(string name)
         {
             if (string.IsNullOrEmpty(name)) return name;
@@ -402,3 +658,4 @@ namespace dotnet_user.Controllers
         }
     }
 }
+
