@@ -379,6 +379,7 @@ namespace dotnet_user.Controllers
             var note = new List<dynamic>();
 
             string connectionCountryString = _configuration.GetConnectionString("CountryConnection");
+
             IEnumerable<dynamic> registers;
 
             using (var connection = new SqlConnection(connectionCountryString))
@@ -429,7 +430,7 @@ namespace dotnet_user.Controllers
 
             foreach (var value in clinics)
             {
-                register.Add(new
+                clinic.Add(new
                 {
                     日期 = value.日期,
                     病歷號碼 = HideNumber(value.病歷號碼),
@@ -462,7 +463,7 @@ namespace dotnet_user.Controllers
 
             foreach (var value in admissions)
             {
-                register.Add(new
+                admission.Add(new
                 {
                     日期 = value.日期,
                     病歷號碼 = HideNumber(value.病歷號碼),
@@ -491,6 +492,22 @@ namespace dotnet_user.Controllers
                     ORDER BY a.就診日";
                 medicines = await connection.QueryAsync<dynamic>(query, new { UserNo = userNo, Year = year.ToString() });
             }
+
+            foreach (var value in medicines)
+            {
+                medicine.Add(new
+                {
+                    日期 = value.日期,
+                    病歷號碼 = HideNumber(value.病歷號碼),
+                    姓名 = HideString(value.姓名),
+                    床號 = value.床號,
+                    科目 = value.科目,
+                    提撥 = value.提撥
+                });
+
+                medicineAmount += Convert.ToDecimal(value.提撥);
+            }
+
 
             IEnumerable<dynamic> counter;
 
@@ -537,14 +554,11 @@ namespace dotnet_user.Controllers
 
             IEnumerable<dynamic> lastClinics;
 
-            // 将 year 转换为字符串以便使用 Substring 方法
             string yearStr = lastMonthDate.ToString();
 
-            // 现在 yearStr 是 "202301"，可以使用 Substring
             var lastYearInt = Convert.ToInt32(yearStr.Substring(0, 4)) - 1911;
             var lastMonthStr = yearStr.Substring(4, 2);
 
-            // 如果需要，将 lastYearInt 转换回字符串以进行进一步格式化
             var formattedLastMonth = $"{lastYearInt}{lastMonthStr}";
 
             using (var connection = new SqlConnection(connectionCountryString))
@@ -605,18 +619,14 @@ namespace dotnet_user.Controllers
             }
 
 
-            // 使用 ADO.NET 而不是 Laravel Eloquent
             List<dynamic> lastAdmissionAmount;
             using (var connection = new SqlConnection(connectionCountryString))
             {
                 await connection.OpenAsync();
                 var query = @"
-            SELECT 提成總計, 總額預扣, 補發或核減, 給付額, 總額追扣, 實發額
-            FROM 健保醫師提成主檔
-            WHERE 醫師代號 = @No AND 提成年月 = @FormattedLastMonth AND 門住診別 = '住'";
-
-                
-
+                    SELECT 提成總計, 總額預扣, 補發或核減, 給付額, 總額追扣, 實發額
+                    FROM 健保醫師提成主檔
+                    WHERE 醫師代號 = @No AND 提成年月 = @FormattedLastMonth AND 門住診別 = '住'";
                 lastAdmissionAmount = (await connection.QueryAsync<dynamic>(query, new { No = userNo, FormattedLastMonth = formattedLastMonth })).ToList();
             }
 
@@ -632,10 +642,23 @@ namespace dotnet_user.Controllers
             });
 
             // 整合最終輸出的資料
-            var finalResult = new
+            var finalResult = new List<object>
             {
-                LastAdmission = lastAdmission,
-                LastAdmissionAmount = formattedLastAdmissionAmount
+                register,
+                string.Format("{0:N0}", registerAmount),
+                clinic,
+                string.Format("{0:N0}", clinicAmount),
+                admission,
+                string.Format("{0:N0}", admissionAmount),
+                medicine,
+                string.Format("{0:N0}", medicineAmount),
+                note,
+                string.Format("{0:NO}",noteAmount),
+                string.Format("{0:NO}",ownTotal),
+                lastClinics,
+                lastAdmissionAmount,
+                lastAdmission,
+                formattedLastAdmissionAmount
             };
 
             return Ok(finalResult);
