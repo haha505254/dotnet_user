@@ -21,6 +21,7 @@ namespace dotnet_user.Controllers
             _logger = logger;
             
         }
+
         public IActionResult Index()
         {
             var strDate = _dateService.GetStartDate(30);

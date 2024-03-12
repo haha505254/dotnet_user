@@ -582,25 +582,24 @@ namespace dotnet_user.Controllers
                 SELECT 提成總計, 總額預扣, 補發或核減, 給付額, 總額追扣, 實發額
                 FROM 健保醫師提成主檔
                 WHERE 醫師代號 = @UserNo AND 提成年月 = @FormattedLastMonth AND 門住診別 = '門'";
-                lastClinicsAmount = await connection.QueryAsync<dynamic>(query, new { UserNo = userNo, FormattedLastMonth = formattedLastMonth });
+                lastClinicsAmount = (await connection.QueryAsync<dynamic>(query, new { UserNo = userNo, FormattedLastMonth = formattedLastMonth })).ToList();
             }
 
 
 
 
             // 格式化查询结果
-            if (lastClinicsAmount != null)
+
+            var formattedLastClinicsAmount = lastClinicsAmount.Select(x => new
             {
-                lastClinicsAmount.Select(x => new
-                {
-                    提成總計 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.提成總計),
-                    總額預扣 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.總額預扣),
-                    補發或核減 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.補發或核減),
-                    給付額 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.給付額),
-                    總額追扣 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.總額追扣),
-                    實發額 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", x.實發額)
-                }).FirstOrDefault();
-            }
+                提成總計 = String.Format("{0:N0}", x.提成總計),
+                總額預扣 = String.Format("{0:N0}", x.總額預扣),
+                補發或核減 = String.Format("{0:N0}", x.補發或核減),
+                給付額 = String.Format("{0:N0}", x.給付額),
+                總額追扣 = String.Format("{0:N0}", x.總額追扣),
+                實發額 = String.Format("{0:N0}", x.實發額)
+            }).FirstOrDefault();
+
 
 
             IEnumerable<dynamic> lastAdmission;
@@ -639,7 +638,7 @@ namespace dotnet_user.Controllers
                 給付額 = string.Format("{0:N0}", a.給付額),
                 總額追扣 = string.Format("{0:N0}", a.總額追扣),
                 實發額 = string.Format("{0:N0}", a.實發額)
-            });
+            }).FirstOrDefault();
 
             // 整合最終輸出的資料
             var finalResult = new List<object>
@@ -653,10 +652,10 @@ namespace dotnet_user.Controllers
                 medicine,
                 string.Format("{0:N0}", medicineAmount),
                 note,
-                string.Format("{0:NO}",noteAmount),
-                string.Format("{0:NO}",ownTotal),
+                string.Format("{0:N0}",noteAmount),
+                string.Format("{0:N0}",ownTotal),
                 lastClinics,
-                lastAdmissionAmount,
+                formattedLastClinicsAmount,
                 lastAdmission,
                 formattedLastAdmissionAmount
             };
