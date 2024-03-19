@@ -6,6 +6,8 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper; // Ensure Dapper is included
+using Newtonsoft.Json;
+using OfficeOpenXml;
 
 namespace dotnet_user.Services
 {
@@ -98,6 +100,193 @@ namespace dotnet_user.Services
             }
 
             return combinedRecords;
+        }
+        public string FormatBiopsyData(IEnumerable<dynamic> combinedRecords)
+        {
+            var result = combinedRecords.Select(record => new
+            {
+                來源 = record.來源 == 0 ? "門診" : "住診",
+                counter = record.counter.ToString(),
+                處置檔 = record.處置檔.ToString(),
+                開單日期 = record.開單日期.ToString(),
+                病歷號碼 = record.病歷號碼.ToString(),
+                姓名 = record.姓名.ToString(),
+                科別 = record.科別.ToString(),
+                醫師 = record.醫師.ToString()
+            }).ToList();
+
+            return JsonConvert.SerializeObject(result, Formatting.Indented);
+        }
+
+        public MemoryStream ExportToExcel(IEnumerable<dynamic> dynamicData)
+        {
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+            var records = dynamicData.Select(item => new
+            {
+                item.來源,
+                item.counter,
+                item.處置檔,
+                item.開單日期,
+                item.病歷號碼,
+                item.姓名,
+                item.科別,
+                item.醫師
+            }).ToList();
+
+            using var package = new ExcelPackage();
+            var worksheet = package.Workbook.Worksheets.Add("Biopsy Data");
+
+            var properties = records.FirstOrDefault()?.GetType().GetProperties();
+            var row = 1;
+
+            if (properties != null)
+            {
+                for (var i = 0; i < properties.Length; i++)
+                {
+                    worksheet.Cells[row, i + 1].Value = properties[i].Name;
+                }
+
+                foreach (var record in records)
+                {
+                    row++;
+                    for (var i = 0; i < properties.Length; i++)
+                    {
+                        worksheet.Cells[row, i + 1].Value = properties[i].GetValue(record, null)?.ToString();
+                    }
+                }
+            }
+
+            var stream = new MemoryStream();
+            package.SaveAs(stream);
+            stream.Position = 0;
+
+            return stream;
+        }
+        public async Task<List<dynamic>> GenerateUpdateSql(IEnumerable<dynamic> dynamicData)
+        {
+            string connectionStringTgsql = _configuration.GetConnectionString("TgsqlConnection") ?? throw new InvalidOperationException("未在配置中找到 'TgsqlConnection' 連接字符串。");
+
+            var result = new List<dynamic>();
+
+            foreach (var record in dynamicData)
+            {
+                using var conn = new SqlConnection(connectionStringTgsql);
+                await conn.OpenAsync();
+
+                if (record.來源 == 0)
+                {
+                    var queryA = "SELECT 備註, 結果檔_counter FROM 門診處置內容檔 WHERE counter = @counter";
+                    using var cmdA = new SqlCommand(queryA, conn);
+                    cmdA.Parameters.AddWithValue("@counter", record.處置檔);
+
+                    var sql_a = new List<dynamic>();
+                    using (var reader = await cmdA.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            sql_a.Add(new { 備註 = reader["備註"].ToString(), 結果檔_counter = reader["結果檔_counter"].ToString() });
+                        }
+                    }
+
+                    if (sql_a.Count == 1)
+                    {
+                        result.Add(new { sql = $"update 門診處置內容檔 set 結果檔_counter = {sql_a[0].備註} where counter = {record.處置檔}" });
+                        result.Add(new { sql = $"update 報告台結果檔 set 來源檔_counter = {record.處置檔} where counter = {sql_a[0].備註}" });
+
+                        var queryB = "SELECT counter, 結果檔_counter FROM 門診處置內容檔 WHERE 門診檔_counter = @門診檔_counter AND 結果檔_counter = @結果檔_counter";
+                        using var cmdB = new SqlCommand(queryB, conn);
+                        cmdB.Parameters.AddWithValue("@門診檔_counter", record.counter);
+                        cmdB.Parameters.AddWithValue("@結果檔_counter", sql_a[0].備註);
+
+                        var sql_b = new List<dynamic>();
+                        using (var readerB = await cmdB.ExecuteReaderAsync())
+                        {
+                            while (await readerB.ReadAsync())
+                            {
+                                sql_b.Add(new { counter = readerB["counter"].ToString(), 結果檔_counter = readerB["結果檔_counter"].ToString() });
+                            }
+                        }
+
+                        if (sql_b.Count == 1)
+                        {
+                            result.Add(new { sql = $"update 門診處置內容檔 set 結果檔_counter = {sql_a[0].結果檔_counter} where counter = {sql_b[0].counter}" });
+                            result.Add(new { sql = $"update 報告台結果檔 set 來源檔_counter = {sql_b[0].counter} where counter = {sql_a[0].結果檔_counter}" });
+                        }
+                    }
+                }
+                else
+                {
+                    var queryA = "SELECT 備註, 結果檔_counter FROM 住診處置內容檔 WHERE counter = @counter";
+                    using var cmdA = new SqlCommand(queryA, conn);
+                    cmdA.Parameters.AddWithValue("@counter", record.處置檔);
+
+                    var sql_a = new List<dynamic>();
+                    using (var reader = await cmdA.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            sql_a.Add(new { 備註 = reader["備註"].ToString(), 結果檔_counter = reader["結果檔_counter"].ToString() });
+                        }
+                    }
+
+                    if (sql_a.Count == 1)
+                    {
+                        var queryB = "SELECT counter, 結果檔_counter FROM 住診處置內容檔 WHERE 住診檔_counter = @住診檔_counter AND 處置代號 = @處置代號";
+                        using var cmdB = new SqlCommand(queryB, conn);
+                        cmdB.Parameters.AddWithValue("@住診檔_counter", record.counter);
+                        cmdB.Parameters.AddWithValue("@處置代號", sql_a[0].備註.Replace("-", ""));
+
+                        var sql_b = new List<dynamic>();
+                        using (var readerB = await cmdB.ExecuteReaderAsync())
+                        {
+                            while (await readerB.ReadAsync())
+                            {
+                                sql_b.Add(new { counter = readerB["counter"].ToString(), 結果檔_counter = readerB["結果檔_counter"].ToString() });
+                            }
+                        }
+
+                        if (sql_b.Count == 1)
+                        {
+                            result.Add(new { sql = $"update 住診處置內容檔 set 結果檔_counter = {sql_b[0].結果檔_counter} where counter = {record.處置檔}" });
+                            result.Add(new { sql = $"update 報告台結果檔 set 來源檔_counter = {record.處置檔} where counter = {sql_b[0].結果檔_counter}" });
+                            result.Add(new { sql = $"update 住診處置內容檔 set 結果檔_counter = {sql_a[0].結果檔_counter} where counter = {sql_b[0].counter}" });
+                            result.Add(new { sql = $"update 報告台結果檔 set 來源檔_counter = {sql_b[0].counter} where counter = {sql_a[0].結果檔_counter}" });
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        public MemoryStream ExportSqlToExcel(List<dynamic> result)
+        {
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+            using var package = new ExcelPackage();
+            var worksheet = package.Workbook.Worksheets.Add("Biopsy SQL");
+
+            var properties = result.FirstOrDefault()?.GetType().GetProperties();
+            var row = 0;
+
+            if (properties != null)
+            {
+                foreach (var record in result)
+                {
+                    row++;
+                    for (var i = 0; i < properties.Length; i++)
+                    {
+                        worksheet.Cells[row, i + 1].Value = properties[i].GetValue(record, null)?.ToString();
+                    }
+                }
+            }
+
+            var stream = new MemoryStream();
+            package.SaveAs(stream);
+            stream.Position = 0;
+
+            return stream;
         }
     }
 }
