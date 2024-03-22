@@ -13,10 +13,10 @@ namespace dotnet_user.Controllers
     [Route("診斷書統計")]
     public class DiagnosisController : Controller
     {
-        private readonly DateService _dateService;
+        private readonly IDateService _dateService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<DiagnosisController> _logger;
-        public DiagnosisController(DateService dateService, IConfiguration configuration, ILogger<DiagnosisController> logger)
+        public DiagnosisController(IDateService dateService, IConfiguration configuration, ILogger<DiagnosisController> logger)
         {
             _configuration = configuration;
             _dateService = dateService;

@@ -14,10 +14,10 @@ namespace dotnet_user.Controllers
     public class RegisterController : Controller
     {
 
-        private readonly DateService _dateService;
+        private readonly IDateService _dateService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<RegisterController> _logger;
-        public RegisterController(DateService dateService, IConfiguration configuration, ILogger<RegisterController> logger)
+        public RegisterController(IDateService dateService, IConfiguration configuration, ILogger<RegisterController> logger)
         {
             _configuration = configuration;
             _dateService = dateService;

@@ -9,11 +9,11 @@ namespace dotnet_user.Controllers
     [Route("門診看診人數")]
     public class OutpatientVisitsController : Controller
     {
-        private readonly DateService _dateService;
+        private readonly IDateService _dateService;
         private readonly OutpatientVisitsService _outpatientVisitsService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<OutpatientVisitsController> _logger;
-        public OutpatientVisitsController(DateService dateService, IConfiguration configuration, ILogger<OutpatientVisitsController> logger, OutpatientVisitsService outpatientVisitsService)
+        public OutpatientVisitsController(IDateService dateService, IConfiguration configuration, ILogger<OutpatientVisitsController> logger, OutpatientVisitsService outpatientVisitsService)
         {
             _configuration = configuration;
             _dateService = dateService;
@@ -66,7 +66,7 @@ namespace dotnet_user.Controllers
                 item.看診班別,
                 item.醫師姓名,
                 item.看診人數,
-            }).ToList();
+            }).OrderBy(item => item.掛號日期).ToList();
 
             using (var package = new ExcelPackage())
             {

@@ -14,10 +14,11 @@ namespace dotnet_user.Controllers
     [Route("醫師時段查詢")]
     public class DoctorController : Controller
     {
-        private readonly DateService _dateService;
+        private readonly IDateService _dateService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<DoctorController> _logger;
-        public DoctorController(DateService dateService, IConfiguration configuration, ILogger<DoctorController> logger)
+
+        public DoctorController(IDateService dateService, IConfiguration configuration, ILogger<DoctorController> logger)
         {
             _configuration = configuration;
             _dateService = dateService;

@@ -21,10 +21,10 @@ namespace dotnet_user.Controllers
     [Route("薪資條查詢")]
     public class SalaryController : Controller
     {
-        private readonly DateService _dateService;
+        private readonly IDateService _dateService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<SalaryController> _logger;
-        public SalaryController(DateService dateService, IConfiguration configuration, ILogger<SalaryController> logger)
+        public SalaryController(IDateService dateService, IConfiguration configuration, ILogger<SalaryController> logger)
         {
             _configuration = configuration;
             _dateService = dateService;
@@ -276,7 +276,7 @@ namespace dotnet_user.Controllers
             // 取得部門信息
             using var tgsqlConn = new SqlConnection(connectionStringTgsql);
             var deptQuery = "SELECT 單位名稱 FROM 病歷單位代號檔 WHERE 單位代號 = @部門別";
-            var dept = await tgsqlConn.QueryFirstOrDefaultAsync<dynamic>(deptQuery, new { 部門別 = user.部門別 });
+            var deptName = (await tgsqlConn.QueryFirstOrDefaultAsync<dynamic>(deptQuery, new { 部門別 = user.部門別 }))?.單位名稱 ?? "未知部門";
 
             // 取得職務信息
             using var countryConn = new SqlConnection(connectionStringCountry);
@@ -319,7 +319,7 @@ namespace dotnet_user.Controllers
 
             var userInfo = new
             {
-                部門 = dept.單位名稱,
+                部門 = deptName,
                 代號 = user.人事代號,
                 姓名 = user.姓名,
                 職務 = job.職務名稱,
@@ -532,7 +532,9 @@ namespace dotnet_user.Controllers
                     FROM 人事薪資異動檔
                     WHERE 人事檔_counter = @UserNo AND 異動年月 = @Year AND 項目名稱 = '當月自費' AND 備註 != ''
                     ";
-                notes = await connection.QueryAsync<dynamic>(query, new { UserNo = counter.FirstOrDefault().counter, Year = year.ToString() });
+                var firstCounter = counter.FirstOrDefault();
+                var userCounter = firstCounter != null ? firstCounter.counter : 0;
+                notes = await connection.QueryAsync<dynamic>(query, new { UserNo = userCounter, Year = year.ToString() });
             }
 
 
@@ -652,12 +654,12 @@ namespace dotnet_user.Controllers
                 medicine,
                 string.Format("{0:N0}", medicineAmount),
                 note,
-                string.Format("{0:N0}",noteAmount),
-                string.Format("{0:N0}",ownTotal),
+                string.Format("{0:N0}", noteAmount),
+                string.Format("{0:N0}", ownTotal),
                 lastClinics,
-                formattedLastClinicsAmount,
+                formattedLastClinicsAmount != null ? formattedLastClinicsAmount : new {},
                 lastAdmission,
-                formattedLastAdmissionAmount
+                formattedLastAdmissionAmount != null ? formattedLastAdmissionAmount : new {}
             };
 
             return Ok(finalResult);

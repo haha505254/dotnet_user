@@ -13,9 +13,9 @@ namespace dotnet_user.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmployeeVisitsService> _logger;
-        private readonly DateService _dateService;
+        private readonly IDateService _dateService;
 
-        public EmployeeVisitsService(IConfiguration configuration, ILogger<EmployeeVisitsService> logger, DateService dateService)
+        public EmployeeVisitsService(IConfiguration configuration, ILogger<EmployeeVisitsService> logger, IDateService dateService)
         {
             _configuration = configuration;
             _logger = logger;

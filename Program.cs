@@ -1,11 +1,27 @@
 using dotnet_user.Services;
+using dotnet_user.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
-builder.Services.AddScoped<DateService>();
-builder.Services.AddScoped<BiopsyService>();
+
+// 딩쩤 DateService
+builder.Services.AddScoped<IDateService, DateService>();
+
+// 딩쩤 BodyService
+builder.Services.AddScoped<IBodyService, BodyService>();
+
+// 딩쩤 BodyRepository
+builder.Services.AddScoped<IBodyRepository, BodyRepository>();
+
+// 딩쩤 BiopsyService
+builder.Services.AddScoped<IBiopsyService, BiopsyService>();
+
+// 딩쩤 BiopsyRepository
+builder.Services.AddScoped<IBiopsyRepository, BiopsyRepository>();
+
+// 딩쩤ⓧ쩖찥걷
 builder.Services.AddScoped<OutpatientVisitsService>();
 builder.Services.AddScoped<EmployeeVisitsService>();
 

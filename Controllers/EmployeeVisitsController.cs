@@ -9,12 +9,12 @@ namespace dotnet_user.Controllers
     [Route("院內看診明細")]
     public class EmployeeVisitsController : Controller
     {
-        private readonly DateService _dateService;
+        private readonly IDateService _dateService;
         private readonly EmployeeVisitsService _employeeVisitsService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmployeeVisitsController> _logger;
 
-        public EmployeeVisitsController(DateService dateService, IConfiguration configuration, ILogger<EmployeeVisitsController> logger, EmployeeVisitsService employeeVisitsService)
+        public EmployeeVisitsController(IDateService dateService, IConfiguration configuration, ILogger<EmployeeVisitsController> logger, EmployeeVisitsService employeeVisitsService)
         {
             _configuration = configuration;
             _dateService = dateService;
