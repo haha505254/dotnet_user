@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using dotnet_user.Services;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
+using dotnet_user.Services.Interface;
 
 namespace dotnet_user.Controllers
 {

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace dotnet_user.Services
+namespace dotnet_user.Services.Interface
 {
     public interface IBiopsyService
     {

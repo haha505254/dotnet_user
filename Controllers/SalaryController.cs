@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using dotnet_user.Services; // 確保引用了 DateService 所在的命名空間
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Data.SqlClient;
@@ -15,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using static Azure.Core.HttpHeader;
 using System.Diagnostics.Metrics;
 using Newtonsoft.Json;
+using dotnet_user.Services.Interface;
 
 namespace dotnet_user.Controllers
 {

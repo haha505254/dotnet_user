@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace dotnet_user.Repositories
+namespace dotnet_user.Repositories.Interface
 {
     public interface IBiopsyRepository
     {

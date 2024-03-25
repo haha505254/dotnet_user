@@ -1,5 +1,10 @@
 using dotnet_user.Services;
 using dotnet_user.Repositories;
+using dotnet_user.Repositories.Interface;
+using dotnet_user.Services.Interface;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using Microsoft.OpenApi.Models;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +25,12 @@ builder.Services.AddScoped<IBiopsyService, BiopsyService>();
 
 // µù¥U BiopsyRepository
 builder.Services.AddScoped<IBiopsyRepository, BiopsyRepository>();
+
+// µù¥U DiagnosisService
+builder.Services.AddScoped<IDiagnosisService, DiagnosisService>();
+
+// µù¥U DiagnosisRepository
+builder.Services.AddScoped<IDiagnosisRepository, DiagnosisRepository>();
 
 // µù¥U¨ä¥LªA°È
 builder.Services.AddScoped<OutpatientVisitsService>();

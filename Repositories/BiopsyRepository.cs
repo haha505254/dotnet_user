@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Dapper;
 using Microsoft.Extensions.Configuration;
+using dotnet_user.Repositories.Interface;
 
 namespace dotnet_user.Repositories
 {

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace dotnet_user.Services
+namespace dotnet_user.Services.Interface
 {
     public interface IDateService
     {

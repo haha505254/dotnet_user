@@ -5,7 +5,8 @@ using System.Dynamic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using Dapper; // Ensure Dapper is included
+using Dapper;
+using dotnet_user.Services.Interface; // Ensure Dapper is included
 
 namespace dotnet_user.Services
 {

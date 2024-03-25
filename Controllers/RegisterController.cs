@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using dotnet_user.Services; // 確保引用了 DateService 所在的命名空間
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Data.SqlClient;
@@ -8,6 +7,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using System;
 using System.Globalization;
+using dotnet_user.Services.Interface;
 namespace dotnet_user.Controllers
 {
     [Route("預掛名單")]
