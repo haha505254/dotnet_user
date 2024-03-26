@@ -21,7 +21,7 @@ namespace dotnet_user.Repositories
         {
             using var connection = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));
 
-            var offSql = @"SELECT [醫師代號] FROM [醫師代班表] WHERE [限數] = '-2' AND [日期] = @strDate";
+            var offSql = @"SELECT [預約代號] FROM [醫師代班表] WHERE [限數] = '-2' AND [日期] = @strDate";
             var off = (await connection.QueryAsync<string>(offSql, new { strDate })).ToList();
 
             return off;
@@ -41,7 +41,7 @@ namespace dotnet_user.Repositories
                 JOIN [人事資料檔] as e ON a.[醫師代號] = e.[人事代號]
                 WHERE a.[年月份] = @yearMonth AND a.[星期代碼] = @week
                 AND a.[限數] NOT IN ('-2')
-                AND a.[醫師代號] NOT IN @offArray
+                AND a.[預約代號] NOT IN @offArray
                 AND b.[代碼名稱] = '科別代碼'
                 AND c.[代碼名稱] = '診別代碼'
                 AND d.[代碼名稱] = '班別代碼'

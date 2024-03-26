@@ -39,7 +39,6 @@ namespace dotnet_user.Controllers
         public async Task<IActionResult> EmployeeVisits(string str_date = "", string end_date = "")
         {
 
-            // Your existing logic to format and process dates goes here
             str_date = str_date.Replace("-", "");
             end_date = end_date.Replace("-", "");
             // 處理 str_date

@@ -11,32 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// µù¥U DateService
-builder.Services.AddScoped<IDateService, DateService>();
-
-// µù¥U BodyService
-builder.Services.AddScoped<IBodyService, BodyService>();
-
-// µù¥U BodyRepository
-builder.Services.AddScoped<IBodyRepository, BodyRepository>();
-
-// µù¥U BiopsyService
-builder.Services.AddScoped<IBiopsyService, BiopsyService>();
-
-// µù¥U BiopsyRepository
-builder.Services.AddScoped<IBiopsyRepository, BiopsyRepository>();
-
-// µù¥U DiagnosisService
-builder.Services.AddScoped<IDiagnosisService, DiagnosisService>();
-
-// µù¥U DiagnosisRepository
-builder.Services.AddScoped<IDiagnosisRepository, DiagnosisRepository>();
-
-// µù¥U DoctorService
-builder.Services.AddScoped<IDoctorService, DoctorService>();
-
-// µù¥U DoctorRepository
-builder.Services.AddScoped<IDoctorRepository, DoctorRepository>();
+// ¦Û°Êµù¥UªA°È©M Repository
+builder.Services.AddServicesInAssembly(Assembly.GetExecutingAssembly());
 
 // µù¥U¨ä¥LªA°È
 builder.Services.AddScoped<OutpatientVisitsService>();
@@ -54,9 +30,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
-
 app.UseAuthorization();
 
 app.MapControllerRoute(

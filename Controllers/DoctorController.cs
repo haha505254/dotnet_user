@@ -33,14 +33,12 @@ namespace dotnet_user.Controllers
             {
                 // 調用 DoctorService 的 GetDoctorRecords 方法獲取醫師時段記錄
                 var result = await _doctorService.GetDoctorRecords(strDate);
-                // 將結果以 JSON 格式返回
+
                 return Json(result);
             }
             catch (Exception ex)
             {
-                // 記錄錯誤日誌
                 _logger.LogError(ex, "獲取醫師時段記錄時發生錯誤");
-                // 返回錯誤信息
                 return Json(new { error = "處理您的請求時發生錯誤。" });
             }
         }
