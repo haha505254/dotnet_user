@@ -25,16 +25,19 @@ namespace dotnet_user.Services
             _logger = logger;
         }
 
+        // 取得當前日期
         public string GetCurrentDate()
         {
             return _dateService.GetCurrentDate();
         }
 
+        // 取得指定天數前的日期
         public string GetStartDate(int daysAgo)
         {
             return _dateService.GetStartDate(daysAgo);
         }
 
+        // 取得切片報告資料
         public async Task<IEnumerable<dynamic>> GetBiopsyData(string strDate, string endDate)
         {
             strDate = strDate.Replace("-", "");
@@ -68,6 +71,7 @@ namespace dotnet_user.Services
             return combinedRecords;
         }
 
+        // 格式化切片報告資料
         public string FormatBiopsyData(IEnumerable<dynamic> combinedRecords)
         {
             var result = combinedRecords.Select(record => new
@@ -85,6 +89,7 @@ namespace dotnet_user.Services
             return JsonConvert.SerializeObject(result, Formatting.Indented);
         }
 
+        // 將資料匯出為 Excel
         public MemoryStream ExportToExcel(IEnumerable<dynamic> dynamicData)
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
@@ -131,6 +136,7 @@ namespace dotnet_user.Services
             return stream;
         }
 
+        // 產生更新資料的 SQL 語句
         public async Task<List<dynamic>> GenerateUpdateSql(IEnumerable<dynamic> dynamicData)
         {
             var result = new List<dynamic>();
@@ -177,6 +183,7 @@ namespace dotnet_user.Services
             return result;
         }
 
+        // 將 SQL 語句匯出為 Excel
         public MemoryStream ExportSqlToExcel(List<dynamic> result)
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;

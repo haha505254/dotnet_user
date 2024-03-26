@@ -15,6 +15,7 @@ namespace dotnet_user.Repositories
             _configuration = configuration;
         }
 
+        // 取得每個月的診斷書數量
         public async Task<IEnumerable<dynamic>> GetDiagnosisCountByMonth(string strDate, string endDate)
         {
             using var connection = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));
@@ -29,6 +30,7 @@ namespace dotnet_user.Repositories
             return records;
         }
 
+        // 取得每個醫師在每個月的診斷書數量  
         public async Task<IEnumerable<dynamic>> GetDiagnosisCountByDoctorAndMonth(string strDate, string endDate)
         {
             using var connection = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));

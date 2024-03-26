@@ -32,6 +32,12 @@ builder.Services.AddScoped<IDiagnosisService, DiagnosisService>();
 // µù¥U DiagnosisRepository
 builder.Services.AddScoped<IDiagnosisRepository, DiagnosisRepository>();
 
+// µù¥U DoctorService
+builder.Services.AddScoped<IDoctorService, DoctorService>();
+
+// µù¥U DoctorRepository
+builder.Services.AddScoped<IDoctorRepository, DoctorRepository>();
+
 // µù¥U¨ä¥LªA°È
 builder.Services.AddScoped<OutpatientVisitsService>();
 builder.Services.AddScoped<EmployeeVisitsService>();

@@ -16,6 +16,7 @@ namespace dotnet_user.Repositories
             _configuration = configuration;
         }
 
+        // 取得門診紀錄
         public async Task<IEnumerable<dynamic>> GetOutpatientRecords(string strDate, string endDate)
         {
             using var connection = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));
@@ -39,6 +40,7 @@ namespace dotnet_user.Repositories
             return outpatientRecords;
         }
 
+        // 取得住院紀錄
         public async Task<IEnumerable<dynamic>> GetInpatientRecords(string strDate, string endDate)
         {
             using var connection = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));
@@ -62,6 +64,7 @@ namespace dotnet_user.Repositories
             return inpatientRecords;
         }
 
+        // 取得切片備註
         public async Task<IEnumerable<dynamic>> GetBiopsyRemarks(int counter)
         {
             using var conn = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));
@@ -82,6 +85,7 @@ namespace dotnet_user.Repositories
             return result;
         }
 
+        // 取得關連紀錄
         public async Task<IEnumerable<dynamic>> GetRelatedRecords(int counter, string remark)
         {
             using var conn = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));

@@ -19,8 +19,8 @@ namespace dotnet_user.Controllers
 
         public IActionResult Index()
         {
-            var strDate = _diagnosisService.GetFirstDayOfLastMonth();
-            var endDate = _diagnosisService.GetLastDayOfLastMonth();
+            var strDate = _diagnosisService.GetFirstDayOfLastMonth(); //取得上個月第一天
+            var endDate = _diagnosisService.GetLastDayOfLastMonth(); //取得上個月最後一天
 
             ViewData["StrDate"] = strDate;
             ViewData["EndDate"] = endDate;
@@ -28,11 +28,13 @@ namespace dotnet_user.Controllers
             return View();
         }
 
+        // 取得診斷書記錄的 API 端點,接受開始日期和結束日期的查詢參數
         [HttpGet("diagnosis")]
         public async Task<IActionResult> Record(string str_date, string end_date)
         {
             try
             {
+                // 呼叫診斷書服務取得診斷書記錄,並以 JSON 格式回傳結果
                 var result = await _diagnosisService.GetDiagnosisRecords(str_date, end_date);
                 return Json(result);
             }

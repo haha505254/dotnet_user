@@ -29,7 +29,6 @@ namespace dotnet_user.Services
             return (endDateTime - startDate).Days;
         }
 
-        // 獲取指定結束日期之前指定天數的日期陣列
         /// <summary>
         /// 獲取指定結束日期之前指定天數的日期陣列
         /// </summary>

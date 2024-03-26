@@ -48,7 +48,7 @@ namespace dotnet_user.Services
 
             // 根據 id 獲取人事資料的身份證字號
             var idResult = await _bodyRepository.GetPersonnelId(id);
-            if (idResult == null) return new { error = "No data found." }; // 如果找不到資料,返回錯誤訊息
+            if (idResult == null || string.IsNullOrEmpty(idResult)) return new { error = "No data found." }; // 如果找不到資料,返回錯誤訊息
 
             // 根據身份證字號獲取病患檔的 counter
             var counterResult = await _bodyRepository.GetPatientCounter(idResult);
