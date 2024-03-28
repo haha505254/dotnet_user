@@ -28,7 +28,7 @@ namespace dotnet_user.Controllers
             return View();
         }
 
-        // 取得診斷書記錄的 API 端點,接受開始日期和結束日期的查詢參數
+        // 取得診斷書記錄
         [HttpGet("diagnosis")]
         public async Task<IActionResult> Record(string str_date, string end_date)
         {
