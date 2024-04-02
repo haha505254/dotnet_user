@@ -67,26 +67,5 @@ namespace dotnet_user.Controllers
                 return Json(new { error = "An error occurred while processing your request." });
             }
         }
-
-        // 格式化日期並轉換為民國年格式
-        private string FormatDate(string dateString, string defaultDate, bool subtractOneDay = false)
-        {
-            dateString = dateString.Replace("-", "");
-
-            if (!string.IsNullOrEmpty(dateString) && DateTime.TryParseExact(dateString, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
-            {
-                if (subtractOneDay)
-                {
-                    parsedDate = parsedDate.AddDays(-1);
-                }
-                dateString = parsedDate.ToString("yyyyMMdd");
-            }
-            else
-            {
-                dateString = defaultDate;
-            }
-
-            return (int.Parse(dateString.Substring(0, 4)) - 1911).ToString() + dateString.Substring(4, 4);
-        }
     }
 }

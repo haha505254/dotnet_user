@@ -1,44 +1,41 @@
-﻿using Dapper;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using System.Linq;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-public class HomeController : Controller
+using dotnet_user.Services.Interface;
+
+namespace dotnet_user.Controllers
 {
-    private readonly IConfiguration _configuration;
-
-    public HomeController(IConfiguration configuration)
+    public class HomeController : Controller
     {
-        _configuration = configuration;
-    }
+        private readonly IHomeService _homeService;
+        private readonly ILogger<HomeController> _logger;
 
-    public async Task<IActionResult> Index(int? id)
-    {
-        string connectionStringTgsql = _configuration.GetConnectionString("TgsqlConnection") ?? throw new InvalidOperationException("未在配置中找到 'TgsqlConnection' 連接字符串。");
-        string connectionStringTgvis = _configuration.GetConnectionString("TgvisConnection") ?? throw new InvalidOperationException("未在配置中找到 'TgvisConnection' 連接字符串。");
-
-        // 查詢人事資料檔以獲取部門別
-        string sqlDept = "SELECT 部門別 FROM 人事資料檔 WHERE counter = @Id";
-        string dept;
-        using (var connection = new SqlConnection(connectionStringTgsql))
+        public HomeController(IHomeService homeService, ILogger<HomeController> logger)
         {
-            var deptResult = await connection.QueryFirstOrDefaultAsync<string>(sqlDept, new { Id = id ?? 0 });
-            dept = deptResult ?? "guest";
+            _homeService = homeService;
+            _logger = logger;
         }
 
-        // 根據部門別查詢用戶權限
-        string sqlUserRight = "SELECT a.dept, b.name, b.icon FROM adminUserRight as a " +
-                              "JOIN adminPage as b ON a.pageNo = b.no " +
-                              "WHERE a.dept = @Dept";
-        IEnumerable<dynamic> userRights;
-        using (var connection = new SqlConnection(connectionStringTgvis))
+        // 首頁 Action,傳入 id 參數
+        public async Task<IActionResult> Index(int? id)
         {
-            userRights = await connection.QueryAsync<dynamic>(sqlUserRight, new { Dept = dept });
-        }
+            try
+            {
+                // 呼叫 _homeService.GetUserRights 方法獲取用戶權限
+                var userRights = await _homeService.GetUserRights(id);
+                ViewData["UserRights"] = userRights;
+                return View();
+            }
+            catch (Exception ex)
+            {
+                // 記錄異常
+                _logger.LogError(ex, "An error occurred while processing the request.");
 
-        ViewData["UserRights"] = userRights; // 将 userRights 添加到 ViewData
-        return View();
+                // 處理異常情況
+                return View("Error");
+            }
+        }
     }
 }

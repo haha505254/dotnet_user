@@ -1,32 +1,30 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
-using System.Dynamic;
 using System.Globalization;
-using System.Linq;
 using System.Threading.Tasks;
-using Dapper;
-using dotnet_user.Services.Interface; // Ensure Dapper is included
+using dotnet_user.Repositories.Interface;
+using dotnet_user.Services.Interface;
+using Microsoft.Extensions.Logging;
 
 namespace dotnet_user.Services
 {
-    public class OutpatientVisitsService
+    public class OutpatientVisitsService : IOutpatientVisitsService
     {
-        private readonly IConfiguration _configuration;
-        private readonly ILogger<OutpatientVisitsService> _logger;
+        private readonly IOutpatientVisitsRepository _outpatientVisitsRepository;
         private readonly IDateService _dateService;
+        private readonly ILogger<OutpatientVisitsService> _logger;
 
-        public OutpatientVisitsService(IConfiguration configuration, ILogger<OutpatientVisitsService> logger, IDateService dateService)
+        public OutpatientVisitsService(IOutpatientVisitsRepository outpatientVisitsRepository, IDateService dateService, ILogger<OutpatientVisitsService> logger)
         {
-            _configuration = configuration;
-            _logger = logger;
+            _outpatientVisitsRepository = outpatientVisitsRepository;
             _dateService = dateService;
+            _logger = logger;
         }
 
+        // 獲取門診看診人數資料
         public async Task<IEnumerable<dynamic>> GetOutpatientVisitsData(string str_date, string end_date, string count)
         {
-            int countValue;
-            countValue = !string.IsNullOrEmpty(count) && int.TryParse(count, out int temp) ? temp : 60;
+            int countValue = !string.IsNullOrEmpty(count) && int.TryParse(count, out int temp) ? temp : 60;
 
             str_date = str_date.Replace("-", "");
             end_date = end_date.Replace("-", "");
@@ -57,38 +55,9 @@ namespace dotnet_user.Services
 
             _logger.LogInformation("{str_date} {end_date}", str_date, end_date);
 
-            string connectionStringTgsql = _configuration.GetConnectionString("TgsqlConnection") ?? throw new InvalidOperationException("未在配置中找到 'TgsqlConnection' 連接字符串。");
-
-            using (var connection = new SqlConnection(connectionStringTgsql))
-            {
-                await connection.OpenAsync();
-
-                var query = @"
-                    SELECT 
-                        a.掛號日期, 
-                        b.代碼內容 AS 看診班別, 
-                        c.姓名 AS 醫師姓名, 
-                        COUNT(a.counter) AS 看診人數
-                    FROM 掛號檔 AS a
-                    JOIN 代碼檔 AS b ON a.班別代碼 = b.代碼
-                    JOIN 人事資料檔 AS c ON a.醫師代號 = c.人事代號
-                    WHERE 
-                        a.掛號日期 BETWEEN @str_date AND @end_date
-                        AND a.完診代碼 = '5'
-                        AND b.代碼名稱 = '班別代碼'
-                    GROUP BY a.掛號日期, b.代碼內容, c.姓名
-                    HAVING COUNT(a.counter) >= @countValue";
-
-                var parameters = new
-                {
-                    str_date,
-                    end_date,
-                    countValue
-                };
-
-                var result = await connection.QueryAsync<dynamic>(query, parameters);
-                return result;
-            }
+            // 呼叫 _outpatientVisitsRepository.GetOutpatientVisitsData 方法獲取門診看診人數資料
+            var result = await _outpatientVisitsRepository.GetOutpatientVisitsData(str_date, end_date, countValue);
+            return result;
         }
     }
 }

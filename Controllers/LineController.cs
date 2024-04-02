@@ -1,116 +1,70 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Dapper;
-using Microsoft.Data.SqlClient;
-using System.Threading.Tasks;
-using System.Collections.Generic;
+using dotnet_user.Services.Interface;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace dotnet_user.Controllers
 {
     [Route("通知管理系統")]
     public class LineController : Controller
     {
-        private readonly IConfiguration _configuration;
-        private readonly ILogger<LineController> _logger;
+        private readonly ILineService _lineService; // 注入 ILineService 介面
+        private readonly ILogger<LineController> _logger; // 注入 ILogger 介面,用於記錄日誌
 
-        public LineController(IConfiguration configuration, ILogger<LineController> logger)
+        public LineController(ILineService lineService, ILogger<LineController> logger)
         {
-            _configuration = configuration;
+            _lineService = lineService;
             _logger = logger;
-
         }
 
+        // 首頁 Action,返回通知管理系統的檢視
         public async Task<IActionResult> Index(string id)
         {
-
-            if (string.IsNullOrEmpty(id))
+            try
             {
-                throw new ArgumentNullException(nameof(id), "ID 不能為 null 或空白。");
-            }
+                // 呼叫 _lineService.GetUserData 方法取得使用者資料
+                var userData = await _lineService.GetUserData(id);
 
-            var user = await GetUserAsync(id);
-            if (user == null)
+                ViewData["Counter"] = userData.Counter;
+                ViewData["Email"] = userData.Email;
+                ViewData["UserSetting"] = userData.UserSetting;
+                ViewData["Items"] = userData.Items;
+
+                // 檢查是否有來自 UpdateUserSetting 方法的重定向
+                if (TempData["UpdateSuccess"] != null)
+                {
+                    ViewBag.Result = "設定已更新成功。";
+                }
+
+                return View();
+            }
+            catch (System.Exception ex)
             {
-                return View(); 
+                _logger.LogError(ex, "Error occurred while retrieving user data");
+                return View();
             }
-
-            string counter = user.Counter?.ToString() ?? throw new InvalidOperationException("Counter 無效。");
-            string email = user.Email帳號?.ToString() ?? throw new InvalidOperationException("Email帳號 無效。");
-
-            var userSetting = await GetUserSettingAsync(counter);
-            var items = await GetNotifyItemsAsync();
-
-            ViewData["User"] = user;
-            ViewData["Counter"] = counter;
-            ViewData["Email"] = email;
-            ViewData["UserSetting"] = userSetting;
-            ViewData["Items"] = items;
-
-            return View();
-
-
-            async Task<dynamic?> GetUserAsync(string id)
-            {
-                var connectionString = _configuration.GetConnectionString("TgsqlConnection") ?? throw new InvalidOperationException("未在配置中找到 'TgsqlConnection' 連接字符串。");
-                using var connection = new SqlConnection(connectionString);
-                var user = await connection.QueryFirstOrDefaultAsync<dynamic>(
-                    "SELECT * FROM 人事資料檔 WHERE counter = @Id AND 刪除否 = '0' AND 離職日 = '' AND 到職日 != ''",
-                    new { Id = id });
-                return user;
-            }
-
-            async Task<IEnumerable<dynamic>> GetUserSettingAsync(string counter)
-            {
-                var connectionString = _configuration.GetConnectionString("CountryConnection") ?? throw new InvalidOperationException("未在配置中找到 'CountryConnection' 連接字符串。");
-                using var connection = new SqlConnection(connectionString);
-                return await connection.QueryAsync<dynamic>(
-                    "SELECT * FROM Notify WHERE Member_Counter = @Counter",
-                    new { Counter = counter });
-            }
-
-            async Task<IEnumerable<dynamic>> GetNotifyItemsAsync()
-            {
-                var connectionString = _configuration.GetConnectionString("CountryConnection") ?? throw new InvalidOperationException("未在配置中找到 'CountryConnection' 連接字符串。");
-                using var connection = new SqlConnection(connectionString);
-                return await connection.QueryAsync<dynamic>("SELECT * FROM NotifyItem");
-            }
-
         }
 
+        // 更新使用者設定的 Action
         [HttpPost]
         public async Task<IActionResult> UpdateUserSetting(string counter, string email, IDictionary<string, string> notifySettings)
         {
-            _logger.LogInformation("Received notifySettings: {NotifySettings}", notifySettings);
-            using var countryConnection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
-            using var tgsqlConnection = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));
-
-            var item = await countryConnection.QueryAsync<dynamic>("SELECT * FROM NotifyItem");
-            var count = item.Count();
-
-            for (int i = 1; i <= count; i++)
+            try
             {
-                var lineValue = notifySettings.ContainsKey($"{i}") ? notifySettings[$"{i}"] : "0";
-                var mailValue = notifySettings.ContainsKey($"mail{i}") ? notifySettings[$"mail{i}"] : "0";
+                // 呼叫 _lineService.UpdateUserSetting 方法更新使用者設定
+                await _lineService.UpdateUserSetting(counter, email, notifySettings);
 
-                var updateQuery = "UPDATE Notify SET Line = @Line, Mail = @Mail WHERE Member_Counter = @MemberCounter AND NotifyItem_Counter = @NotifyItemCounter";
-                // Log the query and parameters
-                _logger.LogInformation("Executing SQL: {SQL}, Line: {Line}, Mail: {Mail}, MemberCounter: {MemberCounter}, NotifyItemCounter: {NotifyItemCounter}",
-                                       updateQuery, lineValue, mailValue, counter, i);
+                // 設定 TempData,表示更新成功
+                TempData["UpdateSuccess"] = true;
 
-                await countryConnection.ExecuteAsync(updateQuery,
-                    new { Line = lineValue, Mail = mailValue, MemberCounter = counter, NotifyItemCounter = i });
+                // 重定向到 Index 方法,並傳遞 id 參數
+                return RedirectToAction("Index", new { id = counter });
             }
-
-            var updateEmailQuery = "UPDATE 人事資料檔 SET Email帳號 = @Email WHERE Counter = @Counter";
-            // Log the email update query
-            _logger.LogInformation("Executing SQL: {SQL}, Email: {Email}, Counter: {Counter}", updateEmailQuery, email, counter);
-
-            await tgsqlConnection.ExecuteAsync(updateEmailQuery,
-                new { Email = email, Counter = counter });
-
-            return Content("User settings updated successfully.");
+            catch (System.Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while updating user settings");
+                return Content("Error updating user settings.");
+            }
         }
-
-
     }
 }
