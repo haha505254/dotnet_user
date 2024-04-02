@@ -17,12 +17,14 @@ namespace dotnet_user.Services
         private readonly IBiopsyRepository _biopsyRepository;
         private readonly IDateService _dateService;
         private readonly ILogger<BiopsyService> _logger;
+        private readonly IExcelService _excelService;
 
-        public BiopsyService(IBiopsyRepository biopsyRepository, IDateService dateService, ILogger<BiopsyService> logger)
+        public BiopsyService(IBiopsyRepository biopsyRepository, IDateService dateService, ILogger<BiopsyService> logger, IExcelService excelService)
         {
             _biopsyRepository = biopsyRepository;
             _dateService = dateService;
             _logger = logger;
+            _excelService = excelService;
         }
 
         // 取得當前日期
@@ -92,8 +94,6 @@ namespace dotnet_user.Services
         // 將資料匯出為 Excel
         public MemoryStream ExportToExcel(IEnumerable<dynamic> dynamicData)
         {
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
             var records = dynamicData.Select(item => new
             {
                 item.來源,
@@ -106,34 +106,7 @@ namespace dotnet_user.Services
                 item.醫師
             }).ToList();
 
-            using var package = new ExcelPackage();
-            var worksheet = package.Workbook.Worksheets.Add("Biopsy Data");
-
-            var properties = records.FirstOrDefault()?.GetType().GetProperties();
-            var row = 1;
-
-            if (properties != null)
-            {
-                for (var i = 0; i < properties.Length; i++)
-                {
-                    worksheet.Cells[row, i + 1].Value = properties[i].Name;
-                }
-
-                foreach (var record in records)
-                {
-                    row++;
-                    for (var i = 0; i < properties.Length; i++)
-                    {
-                        worksheet.Cells[row, i + 1].Value = properties[i].GetValue(record, null)?.ToString();
-                    }
-                }
-            }
-
-            var stream = new MemoryStream();
-            package.SaveAs(stream);
-            stream.Position = 0;
-
-            return stream;
+            return _excelService.ExportToExcel(records, "Biopsy Data");
         }
 
         // 產生更新資料的 SQL 語句

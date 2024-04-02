@@ -10,12 +10,14 @@ namespace dotnet_user.Controllers
     {
         private readonly IDateService _dateService;
         private readonly IOutpatientVisitsService _outpatientVisitsService;
+        private readonly IExcelService _excelService;
         private readonly ILogger<OutpatientVisitsController> _logger;
 
-        public OutpatientVisitsController(IDateService dateService, ILogger<OutpatientVisitsController> logger, IOutpatientVisitsService outpatientVisitsService)
+        public OutpatientVisitsController(IDateService dateService, ILogger<OutpatientVisitsController> logger, IOutpatientVisitsService outpatientVisitsService, IExcelService excelService)
         {
             _dateService = dateService;
             _outpatientVisitsService = outpatientVisitsService;
+            _excelService = excelService;
             _logger = logger;
         }
 
@@ -66,8 +68,6 @@ namespace dotnet_user.Controllers
         {
             try
             {
-                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
                 // 呼叫 _outpatientVisitsService.GetOutpatientVisitsData 方法獲取門診看診人數資料
                 var dynamicData = await _outpatientVisitsService.GetOutpatientVisitsData(str_date, end_date, count);
 
@@ -79,36 +79,9 @@ namespace dotnet_user.Controllers
                     item.看診人數,
                 }).OrderBy(item => item.掛號日期).ToList();
 
-                using (var package = new ExcelPackage())
-                {
-                    var worksheet = package.Workbook.Worksheets.Add("OutpatientVisits Data");
+                var stream = _excelService.ExportToExcel(records, "OutpatientVisits Data");
 
-                    var properties = records.FirstOrDefault()?.GetType().GetProperties();
-                    int row = 1;
-
-                    if (properties != null)
-                    {
-                        for (int i = 0; i < properties.Length; i++)
-                        {
-                            worksheet.Cells[row, i + 1].Value = properties[i].Name;
-                        }
-
-                        foreach (var record in records)
-                        {
-                            row++;
-                            for (int i = 0; i < properties.Length; i++)
-                            {
-                                worksheet.Cells[row, i + 1].Value = properties[i].GetValue(record, null)?.ToString();
-                            }
-                        }
-                    }
-
-                    var stream = new MemoryStream();
-                    package.SaveAs(stream);
-                    stream.Position = 0;
-
-                    return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "OutpatientVisitsData.xlsx");
-                }
+                return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "OutpatientVisitsData.xlsx");
             }
             catch (Exception ex)
             {

@@ -14,12 +14,14 @@ namespace dotnet_user.Services
         private readonly IEmployeeVisitsRepository _employeeVisitsRepository;
         private readonly IDateService _dateService;
         private readonly ILogger<EmployeeVisitsService> _logger;
+        private readonly IExcelService _excelService;
 
-        public EmployeeVisitsService(IEmployeeVisitsRepository employeeVisitsRepository, IDateService dateService, ILogger<EmployeeVisitsService> logger)
+        public EmployeeVisitsService(IEmployeeVisitsRepository employeeVisitsRepository, IDateService dateService, ILogger<EmployeeVisitsService> logger, IExcelService excelService)
         {
             _employeeVisitsRepository = employeeVisitsRepository;
             _dateService = dateService;
             _logger = logger;
+            _excelService = excelService;
         }
 
 
@@ -62,10 +64,12 @@ namespace dotnet_user.Services
                 str_date = FormatDate(str_date, _dateService.GetStartDate(30), true);
                 end_date = FormatDate(end_date, _dateService.GetCurrentDate());
 
-                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                var employeeRecords = await _employeeVisitsRepository.GetEmployeeVisitsRecords(str_date, end_date);
+                var doctorRecords = await _employeeVisitsRepository.GetDoctorVisitsRecords(str_date, end_date);
 
-                var dynamicData = await _employeeVisitsRepository.GetEmployeeVisitsRecords(str_date, end_date);
-                var records = dynamicData.Select(item => new
+                var combinedRecords = employeeRecords.Concat(doctorRecords);
+
+                var records = combinedRecords.Select(item => new
                 {
                     item.類別,
                     item.醫師代號,
@@ -76,36 +80,7 @@ namespace dotnet_user.Services
                     item.結束日
                 }).ToList();
 
-                using (var package = new ExcelPackage())
-                {
-                    var worksheet = package.Workbook.Worksheets.Add("EmployeeVisits Data");
-
-                    var properties = records.FirstOrDefault()?.GetType().GetProperties();
-                    int row = 1;
-
-                    if (properties != null)
-                    {
-                        for (int i = 0; i < properties.Length; i++)
-                        {
-                            worksheet.Cells[row, i + 1].Value = properties[i].Name;
-                        }
-
-                        foreach (var record in records)
-                        {
-                            row++;
-                            for (int i = 0; i < properties.Length; i++)
-                            {
-                                worksheet.Cells[row, i + 1].Value = properties[i].GetValue(record, null)?.ToString();
-                            }
-                        }
-                    }
-
-                    var stream = new MemoryStream();
-                    package.SaveAs(stream);
-                    stream.Position = 0;
-
-                    return stream;
-                }
+                return _excelService.ExportToExcel(records, "EmployeeVisits Data");
             }
             catch (Exception ex)
             {
