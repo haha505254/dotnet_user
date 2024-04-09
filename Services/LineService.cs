@@ -19,10 +19,6 @@ namespace dotnet_user.Services
         {
             // 呼叫 _lineRepository.GetUserAsync 方法獲取使用者資料
             var user = await _lineRepository.GetUserAsync(id);
-            if (user == null)
-            {
-                return null;
-            }
 
             string counter = user.Counter?.ToString() ?? throw new System.InvalidOperationException("Counter 無效。");
             string email = user.Email帳號?.ToString() ?? throw new System.InvalidOperationException("Email帳號 無效。");

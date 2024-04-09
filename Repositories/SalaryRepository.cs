@@ -5,6 +5,10 @@ using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MimeKit;
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using System;
 
 namespace dotnet_user.Services
 {
@@ -66,21 +70,21 @@ namespace dotnet_user.Services
             using var tgsqlConn = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));
             var deptQuery = "SELECT 單位名稱 FROM 病歷單位代號檔 WHERE 單位代號 = @部門別";
             var dept = await tgsqlConn.QueryFirstOrDefaultAsync<dynamic>(deptQuery, new { 部門別 = departmentCode });
-            return dept?.單位名稱;
+            return dept?.單位名稱 ?? string.Empty;
         }
 
         public async Task<dynamic> GetJobInformation(string idNumber)
         {
             using var countryConn = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
             var jobQuery = @"
-                    SELECT 職務名稱 
-                    FROM 人事資料檔 
-                    WHERE 身份證號 = @身份證字號 
-                        AND 離職日 = '' 
-                        AND (職務名稱 IS NOT NULL OR 職務名稱 != '') 
-                    GROUP BY 職務名稱";
+                SELECT 職務名稱 
+                FROM 人事資料檔
+                WHERE 身份證號 = @身份證字號
+                AND 離職日 = ''  
+                AND (職務名稱 IS NOT NULL OR 職務名稱 != '')
+                GROUP BY 職務名稱";
             var job = await countryConn.QueryFirstOrDefaultAsync<dynamic>(jobQuery, new { 身份證字號 = idNumber });
-            return job;
+            return job ?? new { };
         }
 
         public async Task<IEnumerable<dynamic>> GetSalaryDetails(int counter, int year, string personnelNumber)
@@ -127,7 +131,7 @@ namespace dotnet_user.Services
         {
             using var connection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
             var query = @"
-                    SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, CAST(a.提成金額 AS DECIMAL(18,2)) as 提撥
+                    SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, a.提成金額 as 提撥
                     FROM [country].[dbo].[醫師提成內容檔] as a
                     JOIN [hpserver].[tgsql].[dbo].[病患檔] as b ON a.病患檔_counter = b.counter
                     WHERE a.主檔_counter IN (
@@ -142,7 +146,7 @@ namespace dotnet_user.Services
         {
             using var connection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
             var query = @"
-                    SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, CAST(a.提成金額 AS DECIMAL(18,2)) as 提撥
+                    SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, a.提成金額 as 提撥
                     FROM [country].[dbo].[醫師提成內容檔] as a
                     JOIN [hpserver].[tgsql].[dbo].[病患檔] as b ON a.病患檔_counter = b.counter
                     WHERE a.主檔_counter IN (
@@ -157,7 +161,7 @@ namespace dotnet_user.Services
         {
             using var connection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
             var query = @"
-                SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, CAST(a.提成金額 AS DECIMAL(18,2)) as 提撥
+                SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, a.提成金額 as 提撥
                 FROM [country].[dbo].[醫師提成內容檔] as a
                 JOIN [hpserver].[tgsql].[dbo].[病患檔] as b ON a.病患檔_counter = b.counter
                 WHERE a.主檔_counter IN (
@@ -171,7 +175,7 @@ namespace dotnet_user.Services
         {
             using var connection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
             var query = @"
-                SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, CAST(a.提成金額 AS DECIMAL(18,2)) as 提撥
+                SELECT a.就診日 as 日期, b.病歷號碼, b.姓名, a.床號, a.處置簡稱 as 科目, a.提成金額 as 提撥
                 FROM [country].[dbo].[醫師提成內容檔] as a
                 JOIN [hpserver].[tgsql].[dbo].[病患檔] as b ON a.病患檔_counter = b.counter
                 WHERE a.主檔_counter IN (
@@ -253,5 +257,37 @@ namespace dotnet_user.Services
             var lastAdmissionAmount = (await connection.QueryAsync<dynamic>(query, new { No = userNo, Year = year })).ToList();
             return lastAdmissionAmount;
         }
+
+
+        public async Task UpdateEmail(int id, string email)
+        {
+            using var tgsqlconnection = new SqlConnection(_configuration.GetConnectionString("TgsqlConnection"));
+            await tgsqlconnection.ExecuteAsync("UPDATE 人事資料檔 SET Email帳號 = @Email WHERE counter = @Id", new { Email = email, Id = id });
+        }
+
+        public async Task<bool[]> SendEmail(dynamic[] to, string title, string content)
+        {
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress("宏恩醫療財團法人宏恩綜合醫院", "country@country.org.tw"));
+            message.To.AddRange(to.Select(t => new MailboxAddress(t.name, t.email)));
+            message.Subject = title;
+
+            var builder = new BodyBuilder
+            {
+                HtmlBody = content
+            };
+            message.Body = builder.ToMessageBody();
+
+            using var client = new SmtpClient();
+            await client.ConnectAsync("mail.country.org.tw", 25, SecureSocketOptions.None);
+            await client.AuthenticateAsync("country_mis", "306578ooo");
+
+            var sendTasks = to.Select(t => client.SendAsync(message));
+            var results = await Task.WhenAll(sendTasks);
+            await client.DisconnectAsync(true);
+
+            return results.Select(r => r == "Ok").ToArray();
+        }
+
     }
 }

@@ -25,5 +25,8 @@ namespace dotnet_user.Services.Interface
         Task<List<dynamic>> GetLastClinicsAmount(string userNo, string year);
         Task<IEnumerable<dynamic>> GetLastAdmission(string userNo, string year);
         Task<List<dynamic>> GetLastAdmissionAmount(string userNo, string year);
+        Task UpdateEmail(int id, string email);
+        Task<bool[]> SendEmail(dynamic[] to, string title, string content);
+
     }
 }

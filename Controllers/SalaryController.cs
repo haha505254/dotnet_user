@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using dotnet_user.Services.Interface;
+using MimeKit;
 
 namespace dotnet_user.Controllers
 {
@@ -73,5 +74,20 @@ namespace dotnet_user.Controllers
 
             return Ok(results);
         }
+
+        [HttpPost("sendEmail")]
+        public async Task<IActionResult> SendEmail(int id, [FromBody] SendEmailRequest request)
+        {
+            var result = await _salaryService.SendEmail(id, request.Email, request.Title, request.Content);
+            return Ok(result);
+        }
+
+        public class SendEmailRequest
+        {
+            public string Email { get; set; }
+            public string Title { get; set; }
+            public string Content { get; set; }
+        }
+
     }
 }

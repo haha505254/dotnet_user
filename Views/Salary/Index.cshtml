@@ -958,31 +958,34 @@
                 modal.find('.modal-title').html('<i class="fas fa-circle-notch fa-spin text-primary pr-2"></i>請稍候');
                 modal.find('.description').html('寄信中。');
                 modal.modal('show');
+
                 $.ajaxSetup({
                     headers: {
                         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                     }
                 });
+
                 $.ajax({
                     type: 'POST',
                     url: '@salarySendEmailUrl' + '?id=' + '@id',
                     dataType: 'json',
-                    data: { email: address.val(), content: table.html(), title: detailTitle.html() }
-                        }).done(function (data) {
-                        if (data[0].valid === 0) {
-                            modal.find('.modal-title').html('<i class="fas fa-exclamation-triangle text-warning pr-2"></i>寄信失敗');
-                            modal.find('.description').html('<p class="m-0">信件未寄送成功。</p>');
-                        } else {
-                            modal.find('.modal-title').html('<i class="fas fa-check text-primary pr-2"></i>寄信成功');
-                            modal.find('.description').html('<p class="m-0">已寄送至' + data[0].email + '，請確認信件。</p>');
-                        }
-                    })
-        } else {
-            modal.find('.modal-title').html('<i class="fas fa-exclamation-triangle text-warning pr-2"></i>提醒');
-            modal.find('.description').html('請重新輸入信箱，或輸入正確的格式。');
-            modal.modal('show');
+                    contentType: 'application/json',
+                    data: JSON.stringify({ email: address.val(), content: table.html(), title: detailTitle.html() })
+                }).done(function (data) {
+                    if (data[0].valid === 0) {
+                        modal.find('.modal-title').html('<i class="fas fa-exclamation-triangle text-warning pr-2"></i>寄信失敗');
+                        modal.find('.description').html('<p class="m-0">信件未寄送成功。</p>');
+                    } else {
+                        modal.find('.modal-title').html('<i class="fas fa-check text-primary pr-2"></i>寄信成功');
+                        modal.find('.description').html('<p class="m-0">已寄送至' + data[0].email + '，請確認信件。</p>');
+                    }
+                });
+            } else {
+                modal.find('.modal-title').html('<i class="fas fa-exclamation-triangle text-warning pr-2"></i>提醒');
+                modal.find('.description').html('請重新輸入信箱，或輸入正確的格式。');
+                modal.modal('show');
+            }
         }
-                }
 
         function printTable() {
             var print = $('#print');

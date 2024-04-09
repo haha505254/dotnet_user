@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Net.Mail;
 using System.Threading.Tasks;
 using dotnet_user.Services.Interface;
 
@@ -66,24 +67,15 @@ namespace dotnet_user.Services
         public async Task<object> GetSalaryDetail(int id, int year)
         {
             var user = await _salaryRepository.UserInfo(id);
-            if (user == null)
-            {
-                return null;
-            }
+
 
             var deptName = await _salaryRepository.GetDepartmentName(user.部門別);
             var job = await _salaryRepository.GetJobInformation(user.身份證字號);
 
-            if (job == null)
-            {
-                return null;
-            }
+
 
             var (counter, personnelNumber) = await _salaryRepository.UserNo(id);
-            if (string.IsNullOrEmpty(personnelNumber))
-            {
-                return null;
-            }
+
 
             var salary = await _salaryRepository.GetSalaryDetails(counter, year, personnelNumber);
 
@@ -189,18 +181,11 @@ namespace dotnet_user.Services
         public async Task<object> GetBonusDetail(int id, int year)
         {
             var user = await _salaryRepository.UserInfo(id);
-            if (user == null)
-            {
-                return null;
-            }
+
 
             var deptName = await _salaryRepository.GetDepartmentName(user.部門別);
             var job = await _salaryRepository.GetJobInformation(user.身份證字號);
 
-            if (job == null)
-            {
-                return null;
-            }
 
             var bonusQuery = _salaryRepository.GetBonusQuery(user.職務代碼, user.身份證字號);
             IEnumerable<dynamic> bonuses = await _salaryRepository.GetBonuses(bonusQuery.Item1, bonusQuery.Item2);
@@ -241,17 +226,11 @@ namespace dotnet_user.Services
         public async Task<object> GetDoctorDetail(int id, int year)
         {
             var user = await _salaryRepository.UserInfo(id);
-            if (user == null)
-            {
-                return null;
-            }
+
 
             var userNoResult = await _salaryRepository.UserNo(id);
             var userNo = userNoResult.Item2;
-            if (string.IsNullOrEmpty(userNo))
-            {
-                return null;
-            }
+
 
             var lastYear = year / 100 + 1911;
             var lastMonth = year % 100;
@@ -328,7 +307,9 @@ namespace dotnet_user.Services
                         科目 = r.科目,
                         提撥 = r.提撥
                     }).ToList(),
+
                     string.Format("{0:N0}", registerAmount),
+
                     clinic.Select(c => new
                     {
                         日期 = c.日期,
@@ -338,7 +319,9 @@ namespace dotnet_user.Services
                         科目 = c.科目,
                         提撥 = c.提撥
                     }).ToList(),
+
                     string.Format("{0:N0}", clinicAmount),
+
                     admission.Select(a => new
                     {
                         日期 = a.日期,
@@ -348,7 +331,9 @@ namespace dotnet_user.Services
                         科目 = a.科目,
                         提撥 = a.提撥
                     }).ToList(),
+
                     string.Format("{0:N0}", admissionAmount),
+
                     medicine.Select(m => new
                     {
                         日期 = m.日期,
@@ -358,14 +343,19 @@ namespace dotnet_user.Services
                         科目 = m.科目,
                         提撥 = m.提撥
                     }).ToList(),
+
                     string.Format("{0:N0}", medicineAmount),
+
                     notes.Select(n => new
                     {
                         備註 = n.備註,
                         金額 = String.Format(CultureInfo.InvariantCulture, "{0:N0}", n.異動金額)
                     }).ToList(),
+
                     string.Format("{0:N0}", noteAmount),
+
                     string.Format("{0:N0}", ownTotal),
+
                     lastClinics.Select(lc => new
                     {
                         病歷號碼 = lc.病歷號碼,
@@ -378,7 +368,9 @@ namespace dotnet_user.Services
                         提成比例 = lc.提成比例,
                         提成金額 = lc.提成金額
                     }).ToList(),
+
                     formattedLastClinicsAmount != null ? formattedLastClinicsAmount : new {},
+
                     lastAdmission.Select(la => new
                     {
                         病歷號碼 = la.病歷號碼,
@@ -391,7 +383,9 @@ namespace dotnet_user.Services
                         提成比例 = la.提成比例,
                         提成金額 = la.提成金額
                     }).ToList(),
+
                     formattedLastAdmissionAmount != null ? formattedLastAdmissionAmount : new {}
+
                 };
 
             return finalResult;
@@ -414,5 +408,21 @@ namespace dotnet_user.Services
             var masked = firstChar + new string('*', Math.Max(0, name.Length - 2)) + lastChar;
             return masked;
         }
+
+        public async Task<List<object>> SendEmail(int id, string email, string title, string content)
+        {
+            var user = await _salaryRepository.UserInfo(id);
+
+            if (user.Email帳號 != email)
+            {
+                await _salaryRepository.UpdateEmail(id, email);
+            }
+
+            var to = new[] { new { name = user.姓名, email } };
+            var result = await _salaryRepository.SendEmail(to, title, content);
+
+            return result.Select(r => new { valid = r ? 1 : 0, email }).ToList<object>();
+        }
+
     }
 }

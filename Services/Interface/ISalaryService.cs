@@ -9,5 +9,6 @@ namespace dotnet_user.Services.Interface
         Task<object> GetSalaryDetail(int id, int year);
         Task<object> GetBonusDetail(int id, int year);
         Task<object> GetDoctorDetail(int id, int year);
+        Task<List<object>> SendEmail(int id, string email, string title, string content);
     }
 }
