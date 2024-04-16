@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using dotnet_user.Services.Interface;
 using MimeKit;
+using System.Text.Json;
 
 namespace dotnet_user.Controllers
 {
@@ -76,18 +77,31 @@ namespace dotnet_user.Controllers
         }
 
         [HttpPost("sendEmail")]
-        public async Task<IActionResult> SendEmail(int id, [FromBody] SendEmailRequest request)
+        public async Task<IActionResult> SendEmail(int id, [FromBody] JsonElement request)
         {
-            var result = await _salaryService.SendEmail(id, request.Email, request.Title, request.Content);
+            string email = request.GetProperty("email").GetString() ?? string.Empty;
+            string title = request.GetProperty("title").GetString() ?? string.Empty;
+            string content = request.GetProperty("content").GetString() ?? string.Empty;
+
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(title) || string.IsNullOrEmpty(content))
+            {
+                return BadRequest("Missing required fields: email, title, or content.");
+            }
+
+            var result = await _salaryService.SendEmail(id, email, title, content);
             return Ok(result);
         }
 
-        public class SendEmailRequest
+        [HttpPost("changePassword")]
+        public async Task<IActionResult> ChangePassword(int id, [FromForm] string old_pw, [FromForm] string new_pw)
         {
-            public string Email { get; set; }
-            public string Title { get; set; }
-            public string Content { get; set; }
-        }
+            if (string.IsNullOrEmpty(old_pw) || string.IsNullOrEmpty(new_pw))
+            {
+                return BadRequest("Missing required fields: old_pw or new_pw.");
+            }
 
+            var result = await _salaryService.ChangePassword(id, old_pw, new_pw);
+            return Ok(result);
+        }
     }
 }

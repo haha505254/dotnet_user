@@ -13,7 +13,7 @@ namespace dotnet_user.Services.Interface
         Task<string> GetDepartmentName(string departmentCode);
         Task<dynamic> GetJobInformation(string idNumber);
         Task<IEnumerable<dynamic>> GetSalaryDetails(int counter, int year, string personnelNumber);
-        Task<(string, object)> GetBonusQuery(int jobCode, string idNumber);
+        (string, object) GetBonusQuery(int jobCode, string employeeCode, int year);
         Task<IEnumerable<dynamic>> GetBonuses(string query, object parameters);
         Task<List<dynamic>> GetRegisterDetail(string userNo, string year);
         Task<List<dynamic>> GetClinicDetail(string userNo, string year);
@@ -27,6 +27,8 @@ namespace dotnet_user.Services.Interface
         Task<List<dynamic>> GetLastAdmissionAmount(string userNo, string year);
         Task UpdateEmail(int id, string email);
         Task<bool[]> SendEmail(dynamic[] to, string title, string content);
+        Task<string> GetOldPassword(string idNumber, int counter);
+        Task UpdatePassword(string idNumber, int counter, string newPassword);
 
     }
 }

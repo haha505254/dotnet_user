@@ -1,6 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Microsoft.AspNetCore.Mvc;
+
+using Microsoft.Extensions.Configuration;
+using Microsoft.Data.SqlClient;
+using Dapper;
+using System.Threading.Tasks;
+using System.Linq;
+using System;
 using System.Globalization;
+using Azure.Core;
+using System.Text;
+using Microsoft.Win32;
+using Microsoft.AspNetCore.Http;
+using static Azure.Core.HttpHeader;
+using System.Diagnostics.Metrics;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Mail;
 using System.Threading.Tasks;
@@ -187,7 +202,7 @@ namespace dotnet_user.Services
             var job = await _salaryRepository.GetJobInformation(user.身份證字號);
 
 
-            var bonusQuery = _salaryRepository.GetBonusQuery(user.職務代碼, user.身份證字號);
+            var bonusQuery = _salaryRepository.GetBonusQuery(user.職務代碼, job.人員代號, year);
             IEnumerable<dynamic> bonuses = await _salaryRepository.GetBonuses(bonusQuery.Item1, bonusQuery.Item2);
 
             var debt = bonuses.Sum(b => (decimal)b.實發金額);
@@ -422,6 +437,23 @@ namespace dotnet_user.Services
             var result = await _salaryRepository.SendEmail(to, title, content);
 
             return result.Select(r => new { valid = r ? 1 : 0, email }).ToList<object>();
+        }
+        public async Task<bool> ChangePassword(int id, string oldPassword, string newPassword)
+        {
+            var user = await _salaryRepository.UserInfo(id);
+            var counter = (user.職務代碼 == 1 || user.職務代碼 == 7) ? 2 : 1;
+
+            var oldPw = await _salaryRepository.GetOldPassword(user.身份證字號, counter);
+
+            if (oldPw == oldPassword)
+            {
+                await _salaryRepository.UpdatePassword(user.身份證字號, counter, newPassword);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
     }

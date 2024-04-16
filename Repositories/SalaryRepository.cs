@@ -77,12 +77,11 @@ namespace dotnet_user.Services
         {
             using var countryConn = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
             var jobQuery = @"
-                SELECT 職務名稱 
+                SELECT TOP 1 職務名稱, 人員代號, 轉帳帳號, 到職日
                 FROM 人事資料檔
-                WHERE 身份證號 = @身份證字號
-                AND 離職日 = ''  
-                AND (職務名稱 IS NOT NULL OR 職務名稱 != '')
-                GROUP BY 職務名稱";
+                WHERE 身份證號 = @身份證字號 AND 離職日 = '' AND (職務名稱 IS NOT NULL AND 職務名稱 != '')
+                GROUP BY 職務名稱, 人員代號, 轉帳帳號, 到職日
+                ORDER BY 到職日 DESC";
             var job = await countryConn.QueryFirstOrDefaultAsync<dynamic>(jobQuery, new { 身份證字號 = idNumber });
             return job ?? new { };
         }
@@ -95,27 +94,21 @@ namespace dotnet_user.Services
             return salary;
         }
 
-        public async Task<(string, object)> GetBonusQuery(int jobCode, string idNumber)
+        public (string, object) GetBonusQuery(int jobCode, string employeeCode, int year)
         {
             string bonusQuery;
             object queryParameters;
 
             if (jobCode == 1 || jobCode == 7)
             {
-                bonusQuery = @"
-            SELECT * FROM 獎金發放結果檔
-            WHERE 人員代號 = @人員代號 AND 獎金年月 = @年 AND 分公司檔_counter = 2";
-                queryParameters = new { 人員代號 = idNumber, 年 = DateTime.Now.Year };
+                bonusQuery = @"SELECT * FROM 獎金發放結果檔  WHERE 人員代號 = @人員代號 AND 獎金年月 = @年 AND 分公司檔_counter = 2";
+                queryParameters = new { 人員代號 = employeeCode, 年 = year };
             }
             else
             {
-                bonusQuery = @"
-            SELECT * FROM 獎金發放結果檔
-            WHERE 人員代號 = @人員代號 AND 獎金年月 = @年";
-                queryParameters = new { 人員代號 = idNumber, 年 = DateTime.Now.Year };
+                bonusQuery = @"SELECT * FROM 獎金發放結果檔 WHERE 人員代號 = @人員代號 AND 獎金年月 = @年";
+                queryParameters = new { 人員代號 = employeeCode, 年 = year };
             }
-
-            await Task.Delay(1);
 
             return (bonusQuery, queryParameters);
         }
@@ -123,7 +116,7 @@ namespace dotnet_user.Services
         public async Task<IEnumerable<dynamic>> GetBonuses(string query, object parameters)
         {
             using var connection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
-            var bonuses = await connection.QueryAsync<dynamic>(query, parameters);
+            IEnumerable<dynamic> bonuses = await connection.QueryAsync<dynamic>(query, parameters);
             return bonuses;
         }
 
@@ -268,7 +261,10 @@ namespace dotnet_user.Services
         public async Task<bool[]> SendEmail(dynamic[] to, string title, string content)
         {
             var message = new MimeMessage();
-            message.From.Add(new MailboxAddress("宏恩醫療財團法人宏恩綜合醫院", "country@country.org.tw"));
+            message.From.Add(new MailboxAddress(
+                _configuration["EmailSettings:FromName"],
+                _configuration["EmailSettings:FromEmail"]
+            ));
             message.To.AddRange(to.Select(t => new MailboxAddress(t.name, t.email)));
             message.Subject = title;
 
@@ -279,14 +275,42 @@ namespace dotnet_user.Services
             message.Body = builder.ToMessageBody();
 
             using var client = new SmtpClient();
-            await client.ConnectAsync("mail.country.org.tw", 25, SecureSocketOptions.None);
-            await client.AuthenticateAsync("country_mis", "306578ooo");
+            await client.ConnectAsync(
+                _configuration["EmailSettings:SmtpServer"],
+                Convert.ToInt32(_configuration["EmailSettings:SmtpPort"]),
+                SecureSocketOptions.None
+            );
+            await client.AuthenticateAsync(
+                _configuration["EmailSettings:Username"],
+                _configuration["EmailSettings:Password"]
+            );
 
             var sendTasks = to.Select(t => client.SendAsync(message));
             var results = await Task.WhenAll(sendTasks);
             await client.DisconnectAsync(true);
 
-            return results.Select(r => r == "Ok").ToArray();
+            return results.Select(r => r.StartsWith("OK")).ToArray();
+        }
+
+        public async Task<string> GetOldPassword(string idNumber, int counter)
+        {
+            using var connection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
+            var oldPwQuery = @"
+                SELECT 第二密碼 
+                FROM 人事資料檔
+                WHERE 身份證號 = @IdNumber AND 分公司檔_counter = @Counter AND 離職日 = ''
+                GROUP BY 第二密碼";
+            return await connection.QueryFirstOrDefaultAsync<string>(oldPwQuery, new { IdNumber = idNumber, Counter = counter }) ?? string.Empty;
+        }
+
+        public async Task UpdatePassword(string idNumber, int counter, string newPassword)
+        {
+            using var connection = new SqlConnection(_configuration.GetConnectionString("CountryConnection"));
+            var updateQuery = @"
+                UPDATE 人事資料檔 
+                SET 第二密碼 = @NewPassword
+                WHERE 身份證號 = @IdNumber AND 分公司檔_counter = @Counter AND 離職日 = ''";
+            await connection.ExecuteAsync(updateQuery, new { NewPassword = newPassword, IdNumber = idNumber, Counter = counter });
         }
 
     }
