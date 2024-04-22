@@ -1,8 +1,6 @@
-﻿@model IEnumerable<dynamic>
-
-@{
+﻿@{
     ViewData["Title"] = "用戶權限";
-    var userRights = ViewData["UserRights"] as IEnumerable<dynamic>;
+    var userRights = Context.Items["UserRights"] as IEnumerable<dynamic>;
     var id = Context.Request.Query["id"].FirstOrDefault()?.ToString() ?? string.Empty;
     var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.PathBase}";
 }

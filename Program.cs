@@ -5,6 +5,7 @@ using dotnet_user.Services.Interface;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using dotnet_user.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,10 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+// 添加使用者權限中間件
+app.UseMiddleware<UserRightsMiddleware>();
+
 app.UseAuthorization();
 
 app.MapControllerRoute(

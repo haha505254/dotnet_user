@@ -19,23 +19,9 @@ namespace dotnet_user.Controllers
         }
 
         // 首頁 Action,傳入 id 參數
-        public async Task<IActionResult> Index(int? id)
+        public IActionResult Index(int? id)
         {
-            try
-            {
-                // 呼叫 _homeService.GetUserRights 方法獲取用戶權限
-                var userRights = await _homeService.GetUserRights(id);
-                ViewData["UserRights"] = userRights;
-                return View();
-            }
-            catch (Exception ex)
-            {
-                // 記錄異常
-                _logger.LogError(ex, "An error occurred while processing the request.");
-
-                // 處理異常情況
-                return View("Error");
-            }
+            return View();
         }
     }
 }
