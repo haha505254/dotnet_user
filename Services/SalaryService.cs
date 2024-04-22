@@ -434,7 +434,40 @@ namespace dotnet_user.Services
             }
 
             var to = new[] { new { name = user.姓名, email } };
-            var result = await _salaryRepository.SendEmail(to, title, content);
+
+            title = System.Text.RegularExpressions.Regex.Replace(title, "<[^>]*>", String.Empty);
+
+            // 使用提供的 HTML 模板,將 content 內容嵌入其中
+            var emailHtml = $@"
+                <!DOCTYPE html PUBLIC ""-//W3C//DTD XHTML 1.0 Strict//EN"" ""http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"">
+                <html xmlns=""http://www.w3.org/1999/xhtml"">
+                <head>
+                    <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
+                    <style type=""text/css"">
+                        .ExternalClass {{ width: 100% }}
+                        .ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div {{ line-height: 150% }}
+                        a {{ text-decoration: none }}
+                        .text-left {{ text-align: left !important; }}
+                        .text-center {{ text-align: center !important; }}
+                        .text-right {{ text-align: right !important; }}
+                        .align-middle {{ vertical-align: middle !important; }}
+                        .custom-border {{ border-top: none; border-bottom: none; }}
+                    </style>
+                </head>
+                <body style=""outline: 0; width: 100%; min-width: 100%; height: 100%; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; font-family: Helvetica, Arial, sans-serif; line-height: 24px; font-weight: normal; font-size: 16px; -moz-box-sizing: border-box; -webkit-box-sizing: border-box; box-sizing: border-box; margin: 0; padding: 0; border: 0;"">
+                    <div class=""preview"" style=""display: none; max-height: 0px; overflow: hidden;"">
+                        信件為宏恩醫療財團法人宏恩綜合醫院薪資/獎金明細
+                    </div>
+                    <p class=""text-center"">{title}</p>
+
+                    <table id=""detail"" style=""border-collapse: collapse; width: 100%;"" border=""1"">
+                        {content}
+                    </table>
+
+                </body>
+                </html>";
+
+            var result = await _salaryRepository.SendEmail(to, title, emailHtml);
 
             return result.Select(r => new { valid = r ? 1 : 0, email }).ToList<object>();
         }
